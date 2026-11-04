@@ -71,4 +71,24 @@ test.describe("procpane UI (server build)", () => {
       await expect(cards.first().or(empty)).toBeVisible({ timeout: 30_000 });
     }
   });
+
+  test("visibility: manual refresh after hidden stops auto poll", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await expect(page.getByRole("button", { name: "刷新" })).toBeVisible();
+
+    await page.evaluate(() => {
+      Object.defineProperty(document, "hidden", {
+        configurable: true,
+        get: () => true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+
+    await page.getByRole("button", { name: "刷新" }).click();
+    await expect(page.getByText(/已刷新 · .*s 前/)).toBeVisible({
+      timeout: 30_000,
+    });
+  });
 });

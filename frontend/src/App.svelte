@@ -19,12 +19,12 @@
   let protoFilter = $state("all");
   let query = $state("");
   let lastRefresh = $state(Date.now());
-  let tick = $state(0);
   let refreshing = $state(false);
   let killOpen = $state(false);
   let toast = $state("");
   let toastVisible = $state(false);
-  let focused = $state(true);
+  /** Bumps every ~1s while the panel is visible so the freshness label updates. */
+  let labelTick = $state(0);
 
   const processCards = $derived(
     listenersToProcessCards(filterListenersBySearch(rows, query)),
@@ -50,10 +50,9 @@
   }
 
   function freshLabel() {
-    void tick;
-    if (refreshing) return "更新中…";
+    void labelTick;
     const sec = (Date.now() - lastRefresh) / 1000;
-    return sec < 3 ? "刚刚更新" : `${Math.floor(sec)}s 前更新`;
+    return refreshing ? "刷新中…" : `已刷新 · ${sec.toFixed(1)}s 前`;
   }
 
   async function doRefresh() {
@@ -124,29 +123,65 @@
     }
   }
 
-  let tickInterval: ReturnType<typeof setInterval>;
-  let refreshInterval: ReturnType<typeof setInterval>;
+  const POLL_MS = 2000;
+  const LABEL_TICK_MS = 1000;
+
+  let pollTimer: ReturnType<typeof setInterval> | undefined;
+  let labelTimer: ReturnType<typeof setInterval> | undefined;
   let unsubRefresh: (() => void) | undefined;
 
+  function startAutoRefresh() {
+    if (pollTimer !== undefined) return;
+    void doRefresh();
+    pollTimer = setInterval(() => {
+      if (!refreshing) void doRefresh();
+    }, POLL_MS);
+  }
+
+  function stopAutoRefresh() {
+    if (pollTimer !== undefined) {
+      clearInterval(pollTimer);
+      pollTimer = undefined;
+    }
+  }
+
+  function startLabelTimer() {
+    if (labelTimer !== undefined) return;
+    labelTimer = setInterval(() => {
+      labelTick++;
+    }, LABEL_TICK_MS);
+  }
+
+  function stopLabelTimer() {
+    if (labelTimer !== undefined) {
+      clearInterval(labelTimer);
+      labelTimer = undefined;
+    }
+  }
+
+  function onPanelVisibilityChange() {
+    if (document.hidden) {
+      stopAutoRefresh();
+      stopLabelTimer();
+    } else {
+      startAutoRefresh();
+      startLabelTimer();
+    }
+  }
+
   onMount(() => {
-    doRefresh();
-    unsubRefresh = onRefresh(() => doRefresh());
-    window.addEventListener("focus", () => (focused = true));
-    window.addEventListener("blur", () => (focused = false));
-    tickInterval = setInterval(() => {
-      tick = Date.now();
-    }, 1000);
-    refreshInterval = setInterval(() => {
-      const interval = focused ? 2000 : 5000;
-      if (Date.now() - lastRefresh >= interval && !refreshing) {
-        doRefresh();
-      }
-    }, 200);
+    unsubRefresh = onRefresh(() => void doRefresh());
+    document.addEventListener("visibilitychange", onPanelVisibilityChange);
+    if (!document.hidden) {
+      startAutoRefresh();
+      startLabelTimer();
+    }
   });
 
   onDestroy(() => {
-    clearInterval(tickInterval);
-    clearInterval(refreshInterval);
+    stopAutoRefresh();
+    stopLabelTimer();
+    document.removeEventListener("visibilitychange", onPanelVisibilityChange);
     unsubRefresh?.();
   });
 </script>
