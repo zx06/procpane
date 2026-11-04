@@ -6,7 +6,7 @@ test.describe("procpane UI (server build)", () => {
 
     await expect(page.getByRole("heading", { name: /procpane/i })).toBeVisible();
     await expect(
-      page.getByPlaceholder("按端口或进程名筛选…"),
+      page.getByPlaceholder("端口 / 进程…"),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "全部" })).toBeVisible();
     await expect(page.getByRole("button", { name: "TCP" })).toBeVisible();
