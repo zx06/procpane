@@ -90,6 +90,13 @@ procpane kill 12345 --yes --signal KILL
    ./bin/procpane-app
    ```
 
+   **Windows** (GUI subsystem — avoids a flashing CMD window):
+
+   ```powershell
+   go build -ldflags="-H windowsgui" -o procpane-app.exe .\cmd\procpane-app
+   .\procpane-app.exe
+   ```
+
 Tray: **left-click** toggles window; **right-click** menu → refresh / quit. UI auto-refreshes ~2s (slower when unfocused).
 
 The popover defaults to **440×520** px (see `cmd/procpane-app/main.go`). CSS follows **system light/dark** via `prefers-color-scheme`. Branded icons live under [`assets/icons/`](assets/icons/) (macOS template PNG + app/tray assets).
@@ -119,7 +126,7 @@ On a Windows 10/11 machine with Go 1.27.3:
 3. **find**: start any local listener (e.g. `python -m http.server 8765`), then `procpane.exe find :8765`.
 4. **kill safety**: `procpane.exe kill 1` must print a refusal (non-zero exit).
 5. **kill confirm**: `procpane.exe kill <pid>` on a test process must prompt unless `--yes`.
-6. **GUI** (optional): install [WebView2 Evergreen Runtime](https://developer.microsoft.com/microsoft-edge/webview2/); build `go build -o procpane-app.exe .\cmd\procpane-app`; confirm system tray icon, window list matches CLI, kill uses confirmation modal.
+6. **GUI** (optional): install [WebView2 Evergreen Runtime](https://developer.microsoft.com/microsoft-edge/webview2/); build `go build -ldflags="-H windowsgui" -o procpane-app.exe .\cmd\procpane-app`; confirm system tray icon, window list matches CLI, kill uses confirmation modal.
 
 You can also copy `bin/procpane.exe` from a Linux cross-compile (`GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build …`) and run steps 2–5 without Go on Windows.
 
