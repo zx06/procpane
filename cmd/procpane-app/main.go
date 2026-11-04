@@ -17,6 +17,10 @@ func main() {
 	app := application.New(application.Options{
 		Name:        "procpane",
 		Description: "Local LISTEN port panel",
+		Server: application.ServerOptions{
+			Host: "127.0.0.1",
+			Port: 8080,
+		},
 		Services: []application.Service{
 			application.NewService(svc),
 		},

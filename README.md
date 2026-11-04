@@ -67,6 +67,18 @@ procpane kill 12345 --yes --signal KILL
 
 Tray: **left-click** toggles window; **right-click** menu → refresh / quit. UI auto-refreshes ~2s (slower when unfocused).
 
+### Automated browser UI tests (Playwright)
+
+CI runs Playwright against a **Wails server build** (`-tags server,production`), which hits the embedded Svelte UI and real Go bindings over HTTP. This does **not** cover the native tray, WebView window, or OS menus — test those manually per platform. Guide: [Wails v3 E2E testing](https://v3.wails.io/guides/e2e-testing/).
+
+```bash
+wails3 generate bindings -f '-tags=server' ./cmd/procpane-app ./internal/gui
+cd frontend && npm ci --ignore-engines && npm run build
+npx playwright install chromium && npm run test:e2e
+```
+
+On GitHub Actions, download **Artifacts** → `playwright-report` (HTML) or `playwright-test-results` (screenshots/traces).
+
 ## Permissions & kill behavior
 
 - Refuses **pid ≤ 1** and **own pid**.

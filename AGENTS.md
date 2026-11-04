@@ -49,7 +49,20 @@ go build -o bin/procpane-app ./cmd/procpane-app
 
 - Linux VM: `procpane list`, `procpane list --json | jq .listeners`.
 - Kill: use a throwaway sleep process; always test refusal for pid 1 and self.
-- GUI tray: manual on macOS/Windows; Linux VM may lack full tray/webview in CI.
+- **Browser UI (Playwright + Wails server build):** exercises the Svelte UI and real Go services over HTTP — not native WebView, OS menus, **tray icons**, or native file dialogs. See [Wails v3 E2E guide](https://v3.wails.io/guides/e2e-testing/).
+
+  ```bash
+  export PATH="$(go env GOPATH)/bin:$PATH"
+  wails3 generate bindings -f '-tags=server' ./cmd/procpane-app ./internal/gui
+  cd frontend && npm ci --ignore-engines && npm run build
+  npx playwright install chromium
+  npx playwright test
+  ```
+
+  Host: `go run -tags server,production ./cmd/procpane-app` (Playwright `webServer` starts this in CI). Requires `application.Options.Server` in `cmd/procpane-app/main.go` (127.0.0.1:8080).
+
+- **GUI tray:** manual on macOS/Windows/Linux — out of scope for Playwright; Linux VM may lack full tray/webview in CI.
+- **CI:** `.github/workflows/e2e-ui.yml` uploads `playwright-report` and `test-results` artifacts (screenshots, traces) on every run — download from the Actions run → Artifacts.
 
 ## Read order
 
