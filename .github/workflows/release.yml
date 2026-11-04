@@ -1,0 +1,235 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build artifacts only (skip GitHub Release upload)
+        type: boolean
+        default: true
+      tag:
+        description: Release tag for notes/upload (e.g. v0.1.0); required when dry_run is false
+        type: string
+        required: false
+
+permissions:
+  contents: write
+
+env:
+  GO_VERSION: "1.27.3"
+  NODE_VERSION: "26.13.0"
+
+jobs:
+  cli:
+    name: CLI (cross-compile)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Build CLI matrix
+        run: |
+          chmod +x scripts/release-cli.sh
+          ./scripts/release-cli.sh dist/release-cli
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-cli
+          path: dist/release-cli/
+          retention-days: 7
+
+  app-linux:
+    name: GUI (linux amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install GTK/WebKit (Wails v3 on Linux)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci --ignore-engines
+          npm run build
+
+      - name: Build tray app
+        run: |
+          mkdir -p dist/release-app
+          go build -trimpath -ldflags="-s -w" -o dist/release-app/procpane-app ./cmd/procpane-app
+
+      - name: Package tarball
+        run: |
+          tar -C dist/release-app -czf procpane-app-linux-amd64.tar.gz procpane-app
+          mv procpane-app-linux-amd64.tar.gz dist/release-app/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-app-linux
+          path: dist/release-app/procpane-app-linux-amd64.tar.gz
+          retention-days: 7
+
+  app-macos:
+    name: GUI (macOS arm64)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci --ignore-engines
+          npm run build
+
+      - name: Build tray app (native arm64)
+        run: |
+          mkdir -p dist/release-app
+          go build -trimpath -ldflags="-s -w" -o dist/release-app/procpane-app ./cmd/procpane-app
+
+      - name: Package zip
+        run: |
+          cd dist/release-app
+          zip -9 ../procpane-app-darwin-arm64.zip procpane-app
+          mv ../procpane-app-darwin-arm64.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-app-macos
+          path: dist/release-app/procpane-app-darwin-arm64.zip
+          retention-days: 7
+
+  app-windows:
+    name: GUI (windows amd64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci --ignore-engines
+          npm run build
+
+      - name: Build tray app
+        shell: bash
+        run: |
+          mkdir -p dist/release-app
+          go build -trimpath -ldflags="-s -w" -o dist/release-app/procpane-app.exe ./cmd/procpane-app
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/release-app/procpane-app.exe -DestinationPath procpane-app-windows-amd64.zip -Force
+          Move-Item procpane-app-windows-amd64.zip dist/release-app/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-app-windows
+          path: dist/release-app/procpane-app-windows-amd64.zip
+          retention-days: 7
+
+  publish:
+    name: Publish GitHub Release
+    needs: [cli, app-linux, app-macos, app-windows]
+    if: >-
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
+      (github.event_name == 'workflow_dispatch' && inputs.dry_run == false)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve release tag
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            tag="${{ inputs.tag }}"
+            if [ -z "$tag" ]; then
+              echo "tag input is required when dry_run is false" >&2
+              exit 1
+            fi
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: release-*
+          merge-multiple: true
+
+      - name: List release files
+        run: find dist -type f | sort
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: procpane ${{ steps.meta.outputs.tag }}
+          generate_release_notes: true
+          body: |
+            ## Assets
+
+            **CLI** (static, `CGO_ENABLED=0`): Linux, macOS, and Windows on amd64 and arm64, plus `SHA256SUMS`.
+
+            **GUI / tray app** (native build per OS):
+            - `procpane-app-linux-amd64.tar.gz` — binary; requires GTK4 + WebKitGTK 6 at runtime.
+            - `procpane-app-darwin-arm64.zip` — unsigned menu-bar app binary for Apple Silicon (ad-hoc; Gatekeeper may prompt).
+            - `procpane-app-windows-amd64.zip` — requires [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) runtime.
+
+            No Linux arm64 GUI, no macOS amd64/universal `.app`, and no installers (dmg/msi) in this release stream — zip/tar only.
+          files: |
+            dist/procpane-linux-amd64
+            dist/procpane-linux-arm64
+            dist/procpane-darwin-amd64
+            dist/procpane-darwin-arm64
+            dist/procpane-windows-amd64.exe
+            dist/procpane-windows-arm64.exe
+            dist/SHA256SUMS
+            dist/procpane-app-linux-amd64.tar.gz
+            dist/procpane-app-darwin-arm64.zip
+            dist/procpane-app-windows-amd64.zip

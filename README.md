@@ -43,6 +43,16 @@ GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o bin/procpane-darwin-amd64 ./c
 
 Automated CLI smoke: `./scripts/test-cli.sh`.
 
+### Release CLI matrix (local)
+
+Cross-compile the same static CLI binaries CI publishes (output under `dist/release-cli/` by default):
+
+```bash
+chmod +x scripts/release-cli.sh
+./scripts/release-cli.sh
+sha256sum -c dist/release-cli/SHA256SUMS
+```
+
 ## CLI examples
 
 ```bash
@@ -119,6 +129,30 @@ You can also copy `bin/procpane.exe` from a Linux cross-compile (`GOOS=windows G
 - **Unix/macOS**: `SIGTERM` (default) or `SIGKILL`.
 - **Windows**: `TerminateProcess` (see `docs/adr/004-kill-safety.md`). CLI/GUI labels still say TERM/KILL for consistency.
 - Killing other users' processes may fail with permission errors — surfaced in CLI JSON / GUI toast.
+
+## Cutting a release
+
+Maintainers tag semver releases on `main` (do not merge release PRs without review). Pushing a tag triggers [`.github/workflows/release.yml`](.github/workflows/release.yml).
+
+1. Ensure `wails.yaml` / docs version strings match the release (CLI `version` in `cmd/procpane/cmdroot/version.go` today is manual).
+2. Create and push an annotated tag, e.g. `git tag -a v0.1.0 -m "v0.1.0"` then `git push origin v0.1.0`.
+3. GitHub Actions builds assets and attaches them to the GitHub Release for that tag.
+
+**Published assets**
+
+| Asset | Notes |
+|-------|--------|
+| `procpane-linux-amd64`, `procpane-linux-arm64` | Static CLI |
+| `procpane-darwin-amd64`, `procpane-darwin-arm64` | Static CLI |
+| `procpane-windows-amd64.exe`, `procpane-windows-arm64.exe` | Static CLI |
+| `SHA256SUMS` | Checksums for CLI binaries |
+| `procpane-app-linux-amd64.tar.gz` | Tray GUI binary; needs GTK4 + WebKitGTK 6 |
+| `procpane-app-darwin-arm64.zip` | Tray GUI for Apple Silicon; **unsigned** — right-click → Open or allow in Privacy & Security |
+| `procpane-app-windows-amd64.zip` | Tray GUI; needs WebView2 runtime |
+
+**Not shipped (v1 release stream):** Linux arm64 GUI, macOS Intel/universal `.app` bundles, dmg/msi installers. GUI builds use `go build ./cmd/procpane-app` after `./scripts/build-frontend.sh` on each target OS (Wails Wake/Taskfile is not wired in this repo yet).
+
+To exercise the workflow without publishing, run **Actions → Release → Run workflow** with **dry_run** enabled (build artifacts only).
 
 ## Project docs
 
