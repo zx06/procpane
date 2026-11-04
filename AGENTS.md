@@ -38,6 +38,7 @@ cd frontend && npm ci && npm run build   # or ./scripts/build-frontend.sh
 
 # GUI (needs OS webview + cgo on Linux)
 go build -o bin/procpane-app ./cmd/procpane-app
+# Windows GUI only: -ldflags="-H windowsgui" (PE GUI subsystem, no CMD flash)
 ```
 
 ## Taboos

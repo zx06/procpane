@@ -161,7 +161,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist/release-app
-          go build -trimpath -ldflags="-s -w" -o dist/release-app/procpane-app.exe ./cmd/procpane-app
+          go build -trimpath -ldflags="-s -w -H windowsgui" -o dist/release-app/procpane-app.exe ./cmd/procpane-app
 
       - name: Package zip
         shell: pwsh
