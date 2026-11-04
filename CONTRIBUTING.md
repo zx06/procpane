@@ -21,7 +21,7 @@ Re-run `./scripts/check-pins.sh` after bumping versions; update README in the sa
 
 ## Cross-platform checklist
 
-- [x] Linux CLI: list / json / find / show / refuse kill 1 (`./scripts/test-cli.sh` / CI)
+- [x] CLI smoke (list / json / find / show / refuse kill 1): `./scripts/test-cli.sh` locally; CI **cli** matrix on Linux / macOS / Windows
 - [ ] macOS: menu bar tray + GUI parity with CLI
 - [ ] Windows: CLI steps in README “Windows self-test”; GUI + WebView2
 - [ ] Kill confirmation on a throwaway process (CLI + GUI modal)
