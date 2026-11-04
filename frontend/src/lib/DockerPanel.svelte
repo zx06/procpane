@@ -3,6 +3,7 @@
   import { dockerStatus, listDockerListeners, type Listener } from "./api";
   import { displayProcessName, listenerMatchesSearch } from "./displayListener";
   import {
+    formatLastUpdated,
     loadRefreshIntervalMs,
     watchRefreshInterval,
   } from "./refreshPoll";
@@ -10,10 +11,11 @@
   let rows: Listener[] = $state([]);
   let query = $state("");
   let refreshing = $state(false);
-  let lastRefresh = $state(Date.now());
-  let labelTick = $state(0);
+  let lastSuccessAt = $state<number | null>(null);
   let status = $state<Awaited<ReturnType<typeof dockerStatus>> | null>(null);
   let error = $state("");
+  /** Non-fatal refresh error when stale rows are still shown. */
+  let refreshWarn = $state("");
 
   const filtered = $derived(
     rows.filter((r) => {
@@ -28,27 +30,34 @@
   );
 
   function freshLabel() {
-    void labelTick;
-    const sec = (Date.now() - lastRefresh) / 1000;
-    return refreshing ? "刷新中…" : `已刷新 · ${sec.toFixed(1)}s 前`;
+    return formatLastUpdated(lastSuccessAt);
   }
 
   async function doRefresh() {
     refreshing = true;
-    error = "";
+    refreshWarn = "";
     try {
       status = await dockerStatus();
       if (!status.reachable) {
-        rows = [];
-        error = status.error || "无法连接 Docker Engine";
+        const msg = status.error || "无法连接 Docker Engine";
+        if (rows.length === 0) {
+          error = msg;
+        } else {
+          refreshWarn = msg;
+        }
         return;
       }
+      error = "";
       rows = await listDockerListeners();
-      lastRefresh = Date.now();
+      lastSuccessAt = Date.now();
     } catch (e) {
       console.error(e);
-      error = "加载失败（见控制台）";
-      rows = [];
+      const msg = "加载失败（见控制台）";
+      if (rows.length === 0) {
+        error = msg;
+      } else {
+        refreshWarn = msg;
+      }
     } finally {
       refreshing = false;
     }
@@ -56,7 +65,6 @@
 
   let pollMs = $state(30_000);
   let pollTimer: ReturnType<typeof setInterval> | undefined;
-  let labelTimer: ReturnType<typeof setInterval> | undefined;
   let unsubSettings: (() => void) | undefined;
 
   function restartPollTimer() {
@@ -73,7 +81,6 @@
     pollMs = await loadRefreshIntervalMs();
     void doRefresh();
     restartPollTimer();
-    labelTimer = setInterval(() => labelTick++, 1000);
     unsubSettings = watchRefreshInterval((ms) => {
       pollMs = ms;
       restartPollTimer();
@@ -82,7 +89,6 @@
 
   onDestroy(() => {
     if (pollTimer) clearInterval(pollTimer);
-    if (labelTimer) clearInterval(labelTimer);
     unsubSettings?.();
   });
 </script>
@@ -102,6 +108,10 @@
     <div class="hint-bar ok">Engine · {status.endpoint}</div>
   {/if}
 
+  {#if refreshWarn}
+    <div class="hint-bar warn">{refreshWarn}</div>
+  {/if}
+
   <div class="tools">
     <div class="search">
       <input type="search" placeholder="容器 / 端口 / 镜像…" bind:value={query} />
@@ -119,14 +129,7 @@
   </div>
 
   <div class="cards-scroll">
-    {#if error}
-      <div class="empty">
-        <p>{error}</p>
-        <p class="empty-hint">请启动 Docker 或检查 DOCKER_HOST / 本地 socket。</p>
-      </div>
-    {:else if filtered.length === 0}
-      <div class="empty">没有已发布的容器端口</div>
-    {:else}
+    {#if filtered.length > 0}
       <div class="cards">
         {#each filtered as row (row.id)}
           <div class="pcard docker-card">
@@ -153,6 +156,15 @@
           </div>
         {/each}
       </div>
+    {:else if error}
+      <div class="empty">
+        <p>{error}</p>
+        <p class="empty-hint">请启动 Docker 或检查 DOCKER_HOST / 本地 socket。</p>
+      </div>
+    {:else if refreshing}
+      <div class="empty">加载中…</div>
+    {:else}
+      <div class="empty">没有已发布的容器端口</div>
     {/if}
   </div>
 

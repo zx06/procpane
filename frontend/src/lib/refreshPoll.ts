@@ -19,3 +19,13 @@ export function watchRefreshInterval(
     }
   });
 }
+
+/** Footer label: last successful refresh as local clock time. */
+export function formatLastUpdated(ts: number | null | undefined): string {
+  if (ts == null || ts <= 0) return "上次更新 —";
+  const d = new Date(ts);
+  const h = d.getHours().toString().padStart(2, "0");
+  const m = d.getMinutes().toString().padStart(2, "0");
+  const s = d.getSeconds().toString().padStart(2, "0");
+  return `上次更新 ${h}:${m}:${s}`;
+}

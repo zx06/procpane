@@ -13,6 +13,7 @@
     wellKnownPortHint,
   } from "./displayListener";
   import {
+    formatLastUpdated,
     loadRefreshIntervalMs,
     watchRefreshInterval,
   } from "./refreshPoll";
@@ -23,8 +24,7 @@
   let query = $state("");
   let refreshing = $state(false);
   let error = $state("");
-  let lastRefresh = $state(Date.now());
-  let labelTick = $state(0);
+  let lastSuccessAt = $state<number | null>(null);
 
   const enabled = $derived(hosts.filter((h) => h.enabled));
 
@@ -40,9 +40,7 @@
   );
 
   function freshLabel() {
-    void labelTick;
-    const sec = (Date.now() - lastRefresh) / 1000;
-    return refreshing ? "刷新中…" : `已刷新 · ${sec.toFixed(1)}s 前`;
+    return formatLastUpdated(lastSuccessAt);
   }
 
   async function loadHosts() {
@@ -58,32 +56,36 @@
 
   async function doRefresh() {
     refreshing = true;
-    error = "";
     try {
       await loadHosts();
       if (!selected) {
         rows = [];
+        error = "";
         return;
       }
       rows = await listSSHListeners(selected);
-      lastRefresh = Date.now();
+      lastSuccessAt = Date.now();
+      error = "";
     } catch (e) {
       console.error(e);
       error = e instanceof Error ? e.message : "SSH 列表失败";
-      rows = [];
     } finally {
       refreshing = false;
     }
   }
 
   async function pickHost(alias: string) {
+    if (alias !== selected) {
+      rows = [];
+      error = "";
+      lastSuccessAt = null;
+    }
     selected = alias;
     await doRefresh();
   }
 
   let pollMs = $state(30_000);
   let pollTimer: ReturnType<typeof setInterval> | undefined;
-  let labelTimer: ReturnType<typeof setInterval> | undefined;
   let unsubSettings: (() => void) | undefined;
 
   function restartPollTimer() {
@@ -100,7 +102,6 @@
     pollMs = await loadRefreshIntervalMs();
     void doRefresh();
     restartPollTimer();
-    labelTimer = setInterval(() => labelTick++, 1000);
     unsubSettings = watchRefreshInterval((ms) => {
       pollMs = ms;
       restartPollTimer();
@@ -109,7 +110,6 @@
 
   onDestroy(() => {
     if (pollTimer) clearInterval(pollTimer);
-    if (labelTimer) clearInterval(labelTimer);
     unsubSettings?.();
   });
 </script>
@@ -160,11 +160,10 @@
           去设置启用 SSH 主机
         </button>
       </div>
-    {:else if error}
-      <div class="empty">{error}</div>
-    {:else if filtered.length === 0}
-      <div class="empty">没有 LISTEN 端口</div>
-    {:else}
+    {:else if filtered.length > 0}
+      {#if error}
+        <div class="hint-bar warn">{error}</div>
+      {/if}
       <div class="cards">
         {#each filtered as row (row.id)}
           <div class="pcard">
@@ -197,6 +196,12 @@
           </div>
         {/each}
       </div>
+    {:else if error}
+      <div class="empty">{error}</div>
+    {:else if refreshing && rows.length === 0}
+      <div class="empty">加载中…</div>
+    {:else}
+      <div class="empty">没有 LISTEN 端口</div>
     {/if}
   </div>
 

@@ -225,9 +225,38 @@ test.describe("procpane UI (server build)", () => {
     });
 
     await page.getByRole("button", { name: "刷新" }).click();
-    await expect(page.getByText(/已刷新 · .*s 前/)).toBeVisible({
+    await expect(page.getByText(/上次更新 \d{2}:\d{2}:\d{2}/)).toBeVisible({
       timeout: 30_000,
     });
+  });
+
+  test("stale-while-revalidate: cards stay visible while refresh spins", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    const cards = page.locator(".cards-scroll .pcard");
+    const empty = page.getByText("没有匹配的 LISTEN 端口");
+    await expect(cards.first().or(empty)).toBeVisible({ timeout: 30_000 });
+
+    const countBefore = await cards.count();
+    if (countBefore === 0) {
+      test.skip(true, "no listener cards in this environment");
+    }
+
+    const footerTime = page.locator("footer.foot .live").getByText(/上次更新/);
+    await expect(footerTime).toBeVisible({ timeout: 30_000 });
+
+    const refreshBtn = page.getByRole("button", { name: "刷新" });
+    await refreshBtn.click();
+
+    await expect(refreshBtn).toHaveClass(/spin/, { timeout: 5_000 });
+    await expect(footerTime).toHaveText(/上次更新 \d{2}:\d{2}:\d{2}/);
+    await expect(footerTime).not.toHaveText(/刷新中/);
+    expect(await cards.count()).toBe(countBefore);
+
+    await expect(refreshBtn).not.toHaveClass(/spin/, { timeout: 30_000 });
+    expect(await cards.count()).toBeGreaterThan(0);
   });
 });
 

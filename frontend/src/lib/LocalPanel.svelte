@@ -16,6 +16,7 @@
   } from "./processCards";
   import { displayProcessName } from "./displayListener";
   import {
+    formatLastUpdated,
     loadRefreshIntervalMs,
     watchRefreshInterval,
   } from "./refreshPoll";
@@ -24,7 +25,7 @@
   let selectedId: string | null = $state(null);
   let protoFilter = $state("all");
   let query = $state("");
-  let lastRefresh = $state(Date.now());
+  let lastSuccessAt = $state<number | null>(null);
   let refreshing = $state(false);
   let killOpen = $state(false);
   let procDetailOpen = $state(false);
@@ -33,9 +34,6 @@
   let procDetailNote = $state("");
   let toast = $state("");
   let toastVisible = $state(false);
-  /** Bumps every ~1s while the panel is visible so the freshness label updates. */
-  let labelTick = $state(0);
-
   const processCards = $derived(
     listenersToProcessCards(filterListenersBySearch(rows, query)),
   );
@@ -60,16 +58,14 @@
   }
 
   function freshLabel() {
-    void labelTick;
-    const sec = (Date.now() - lastRefresh) / 1000;
-    return refreshing ? "刷新中…" : `已刷新 · ${sec.toFixed(1)}s 前`;
+    return formatLastUpdated(lastSuccessAt);
   }
 
   async function doRefresh() {
     refreshing = true;
     try {
       rows = await listListeners(protoFilter === "all" ? "all" : protoFilter);
-      lastRefresh = Date.now();
+      lastSuccessAt = Date.now();
       if (
         selectedId &&
         !listenersToProcessCards(rows).some((c) => c.id === selectedId)
@@ -162,11 +158,8 @@
     else if (killOpen) killOpen = false;
   }
 
-  const LABEL_TICK_MS = 1000;
-
   let pollMs = $state(30_000);
   let pollTimer: ReturnType<typeof setInterval> | undefined;
-  let labelTimer: ReturnType<typeof setInterval> | undefined;
   let unsubRefresh: (() => void) | undefined;
   let unsubSettings: (() => void) | undefined;
 
@@ -192,27 +185,11 @@
     }
   }
 
-  function startLabelTimer() {
-    if (labelTimer !== undefined) return;
-    labelTimer = setInterval(() => {
-      labelTick++;
-    }, LABEL_TICK_MS);
-  }
-
-  function stopLabelTimer() {
-    if (labelTimer !== undefined) {
-      clearInterval(labelTimer);
-      labelTimer = undefined;
-    }
-  }
-
   function onPanelVisibilityChange() {
     if (document.hidden) {
       stopAutoRefresh();
-      stopLabelTimer();
     } else {
       startAutoRefresh();
-      startLabelTimer();
     }
   }
 
@@ -227,13 +204,11 @@
     window.addEventListener("keydown", onWindowKeydown);
     if (!document.hidden) {
       startAutoRefresh();
-      startLabelTimer();
     }
   });
 
   onDestroy(() => {
     stopAutoRefresh();
-    stopLabelTimer();
     document.removeEventListener("visibilitychange", onPanelVisibilityChange);
     unsubRefresh?.();
     unsubSettings?.();
