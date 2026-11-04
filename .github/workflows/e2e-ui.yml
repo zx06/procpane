@@ -75,6 +75,7 @@ jobs:
 
       - name: Post E2E screenshots on pull request
         if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
         working-directory: .
         env:
           GH_TOKEN: ${{ github.token }}

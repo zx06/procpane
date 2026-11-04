@@ -1,6 +1,87 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+async function selectSourceTab(
+  page: Page,
+  label: "本机" | "Docker" | "SSH",
+) {
+  const nav = page.getByRole("navigation", { name: "数据源" });
+  await expect(nav).toBeVisible();
+  await nav.getByRole("button", { name: label, exact: true }).click();
+}
 
 test.describe("procpane UI (server build)", () => {
+  test("smoke: source tabs 本机 / Docker / SSH", async ({ page }) => {
+    await page.goto("/");
+
+    const tabs = page.locator("nav.source-tabs");
+    await expect(tabs).toBeVisible();
+    await expect(tabs.getByRole("button", { name: "本机", exact: true })).toBeVisible();
+    await expect(tabs.getByRole("button", { name: "Docker", exact: true })).toBeVisible();
+    await expect(tabs.getByRole("button", { name: "SSH", exact: true })).toBeVisible();
+
+    // Default tab remains local.
+    await expect(page.getByText("本地 LISTEN 端口")).toBeVisible();
+    await expect(tabs.getByRole("button", { name: "本机", exact: true })).toHaveClass(/on/);
+  });
+
+  test("docker tab: panel and unreachable or empty state (no daemon required)", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await selectSourceTab(page, "Docker");
+
+    await expect(page.getByRole("heading", { name: "Docker", exact: true })).toBeVisible();
+    await expect(page.getByText("已发布端口（Engine API）")).toBeVisible();
+
+    const hintDisconnected = page.getByText(/Docker 未连接/);
+    const hintOk = page.getByText(/^Engine · /);
+    const emptyPublished = page.getByText("没有已发布的容器端口");
+    const dockerCards = page.locator(".cards-scroll .docker-card");
+    const dockerHint = page.getByText(/DOCKER_HOST|本地 socket/);
+    const emptyError = page.getByText(/无法连接 Docker Engine|加载失败/);
+
+    // Wait until Docker status probe finishes (connected or not).
+    await expect
+      .poll(
+        async () =>
+          (await hintDisconnected.isVisible()) || (await hintOk.isVisible()),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
+
+    if (await hintDisconnected.isVisible()) {
+      await expect(emptyError.or(dockerHint).first()).toBeVisible();
+    } else {
+      // Engine reachable: empty list and/or published-port cards (both may show).
+      await expect(hintOk).toBeVisible();
+      await expect(emptyPublished.or(dockerCards.first())).toBeVisible();
+    }
+  });
+
+  test("ssh tab: empty state or enabled host chips", async ({ page }) => {
+    await page.goto("/");
+    await selectSourceTab(page, "SSH");
+
+    await expect(page.getByRole("heading", { name: "SSH", exact: true })).toBeVisible();
+    await expect(page.getByText("已启用主机的 LISTEN")).toBeVisible();
+
+    const empty = page.getByText("尚未启用任何 SSH 主机");
+    const settingsCta = page.getByRole("button", {
+      name: "去设置启用 SSH 主机",
+    });
+    const hostChip = page.locator(".host-chips .host-chip").first();
+    const sshEmptyList = page.getByText("没有 LISTEN 端口");
+    const sshCards = page.locator(".cards-scroll .pcard");
+
+    await expect(empty.or(hostChip).or(sshEmptyList).or(sshCards.first())).toBeVisible({
+      timeout: 30_000,
+    });
+
+    if (await empty.isVisible().catch(() => false)) {
+      await expect(settingsCta).toBeVisible();
+    }
+  });
+
   test("smoke: shell, filters, and card stack pane", async ({ page }) => {
     await page.goto("/");
 
@@ -117,6 +198,7 @@ test.describe("procpane UI (server build)", () => {
 
   test("interaction: proto chips toggle without error", async ({ page }) => {
     await page.goto("/");
+    await selectSourceTab(page, "本机");
     await expect(page.locator(".cards-scroll")).toBeVisible();
 
     for (const label of ["TCP", "UDP", "全部"] as const) {
@@ -143,8 +225,99 @@ test.describe("procpane UI (server build)", () => {
     });
 
     await page.getByRole("button", { name: "刷新" }).click();
-    await expect(page.getByText(/已刷新 · .*s 前/)).toBeVisible({
+    await expect(page.getByText(/上次更新 \d{2}:\d{2}:\d{2}/)).toBeVisible({
       timeout: 30_000,
     });
+  });
+
+  test("stale-while-revalidate: cards stay visible while refresh spins", async ({
+    page,
+  }) => {
+    await page.goto("/");
+
+    const cards = page.locator(".cards-scroll .pcard");
+    const empty = page.getByText("没有匹配的 LISTEN 端口");
+    await expect(cards.first().or(empty)).toBeVisible({ timeout: 30_000 });
+
+    const countBefore = await cards.count();
+    if (countBefore === 0) {
+      test.skip(true, "no listener cards in this environment");
+    }
+
+    const footerTime = page.locator("footer.foot .live").getByText(/上次更新/);
+    await expect(footerTime).toBeVisible({ timeout: 30_000 });
+
+    const refreshBtn = page.getByRole("button", { name: "刷新" });
+    await refreshBtn.click();
+
+    await expect(refreshBtn).toHaveClass(/spin/, { timeout: 5_000 });
+    await expect(footerTime).toHaveText(/上次更新 \d{2}:\d{2}:\d{2}/);
+    await expect(footerTime).not.toHaveText(/刷新中/);
+    expect(await cards.count()).toBe(countBefore);
+
+    await expect(refreshBtn).not.toHaveClass(/spin/, { timeout: 30_000 });
+    expect(await cards.count()).toBeGreaterThan(0);
+  });
+});
+
+test.describe("procpane settings (server build, /settings.html)", () => {
+  test("smoke: settings page loads Docker context select and SSH host list", async ({
+    page,
+  }) => {
+    await page.goto("/settings.html");
+
+    await expect(page.getByRole("heading", { name: /procpane 设置/i })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole("heading", { name: "自动刷新", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Docker", exact: true })).toBeVisible();
+    await expect(page.locator("select.ctx-select").first()).toBeVisible();
+    await expect(page.locator("select.ctx-select")).toHaveCount(2);
+    await expect(page.getByText("Endpoint")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "SSH 主机", exact: true })).toBeVisible();
+    await expect(page.getByText(/~\/\.ssh\/config/)).toBeVisible();
+  });
+
+  test("settings scroll root allows overflow (matches fixed settings window)", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 420, height: 480 });
+    await page.goto("/settings.html");
+
+    await expect(page.getByRole("heading", { name: /procpane 设置/i })).toBeVisible({
+      timeout: 30_000,
+    });
+
+    const scrollRoot = page.locator(".settings-app");
+    await expect(scrollRoot).toBeVisible();
+
+    const overflowY = await scrollRoot.evaluate(
+      (el) => getComputedStyle(el).overflowY,
+    );
+    expect(overflowY).toBe("auto");
+
+    await page.evaluate(() => {
+      const root = document.querySelector(".settings-app");
+      if (!root) throw new Error("missing .settings-app");
+      let ul = root.querySelector(".host-list");
+      if (!ul) {
+        ul = document.createElement("ul");
+        ul.className = "host-list";
+        root.appendChild(ul);
+      }
+      for (let i = 0; i < 40; i++) {
+        const li = document.createElement("li");
+        li.textContent = `scroll-fixture-${i}`;
+        li.style.padding = "12px 0";
+        ul.appendChild(li);
+      }
+    });
+
+    const scrolled = await scrollRoot.evaluate((el) => {
+      const before = el.scrollTop;
+      el.scrollTop = el.scrollHeight;
+      return el.scrollTop > before;
+    });
+    expect(scrolled).toBe(true);
   });
 });

@@ -1,4 +1,5 @@
 import type { ChainNode, Listener } from "./api";
+import { displayProcessName } from "./displayListener";
 
 export type PortRef = { port: number; proto: string };
 
@@ -76,6 +77,7 @@ export function filterListenersBySearch(
     if (
       String(r.port).includes(q) ||
       r.name.toLowerCase().includes(q) ||
+      displayProcessName(r.name).toLowerCase().includes(q) ||
       String(r.pid).includes(q)
     ) {
       matchingPids.add(r.pid);

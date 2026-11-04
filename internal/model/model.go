@@ -29,6 +29,15 @@ type Listener struct {
 	Started  string   `json:"started"`
 	Leftover bool     `json:"leftover,omitempty"`
 	Chain    []ChainNode `json:"chain"`
+
+	// Optional HostSource metadata (v0.2+); omitted for pure local rows.
+	Source        string `json:"source,omitempty"`        // local, docker, ssh
+	Host          string `json:"host,omitempty"`          // ssh Host alias
+	ContainerID   string `json:"containerId,omitempty"`   // docker short id
+	ContainerName string `json:"containerName,omitempty"`
+	Image         string `json:"image,omitempty"`
+	PublishHost   string `json:"publishHost,omitempty"` // e.g. 0.0.0.0
+	PublishPort   uint32 `json:"publishPort,omitempty"` // host-side published port
 }
 
 // ChainNode is one step in the parent process chain (root → leaf).

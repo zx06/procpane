@@ -299,6 +299,11 @@ body {
   text-overflow: ellipsis;
 }
 
+.pcard-top .name.unknown {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .name .tag {
   margin-left: 5px;
   font-size: 9px;
@@ -644,4 +649,221 @@ body {
   box-shadow: var(--shadow);
   z-index: 80;
   -webkit-app-region: no-drag;
+}
+
+.source-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px 0;
+  flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+
+.source-tabs button {
+  -webkit-app-region: no-drag;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.source-tabs button.on {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ver-badge {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--faint);
+  -webkit-app-region: no-drag;
+}
+
+.tab-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.global-quit {
+  flex-shrink: 0;
+  padding: 4px 10px 8px;
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--hair2);
+}
+
+.hint-bar {
+  font-size: 11px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--hair2);
+}
+
+.hint-bar.ok {
+  color: var(--ok);
+}
+
+.hint-bar.warn {
+  color: var(--warn);
+}
+
+.host-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--hair2);
+}
+
+.host-chip {
+  border: 1px solid var(--hair);
+  background: var(--pop-elev);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.host-chip.on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.docker-meta {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dim {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.empty-hint {
+  margin-top: 8px;
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.btn.primary {
+  margin-top: 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--hair));
+}
+
+html.settings-root,
+html.settings-root body,
+html.settings-root #app {
+  height: 100%;
+  overflow: hidden;
+}
+
+.settings-app {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-app-region: no-drag;
+  padding: 16px 18px 24px;
+  background: var(--pop);
+  color: var(--text);
+}
+
+.settings-app::-webkit-scrollbar {
+  width: 8px;
+}
+
+.settings-app::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted) 35%, transparent);
+  border-radius: 8px;
+}
+
+.settings-hd h1 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.settings-hd .sub {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.settings-block {
+  margin-top: 20px;
+}
+
+.settings-block h2 {
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+
+.settings-block .hint,
+.settings-block .empty,
+.state-path {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.host-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+
+.host-list li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--hair2);
+}
+
+.host-list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.host-list .alias {
+  font-weight: 600;
+  min-width: 80px;
+}
+
+.readonly .row {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.readonly .k {
+  color: var(--muted);
+  min-width: 72px;
+}
+
+.readonly .v.ok {
+  color: var(--ok);
+}
+
+.readonly .v.bad {
+  color: var(--warn);
+}
+
+.readonly .err {
+  font-size: 11px;
+  color: var(--warn);
+  margin-top: 6px;
+}
+
+.mono {
+  font-family: var(--mono);
+  word-break: break-all;
 }
