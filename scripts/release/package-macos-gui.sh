@@ -5,6 +5,13 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 binary="${1:-$root/dist/release-app/procpane-app}"
 out_dir="${2:-$root/dist/release-app}"
+
+if [[ "$binary" != /* ]]; then
+  binary="$root/$binary"
+fi
+if [[ "$out_dir" != /* ]]; then
+  out_dir="$root/$out_dir"
+fi
 app_name="procpane.app"
 dmg_name="procpane-app-darwin-arm64.dmg"
 zip_name="procpane-app-darwin-arm64.zip"

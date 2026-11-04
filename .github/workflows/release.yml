@@ -169,12 +169,20 @@ jobs:
           Compress-Archive -Path dist/release-app/procpane-app.exe -DestinationPath procpane-app-windows-amd64.zip -Force
           Move-Item procpane-app-windows-amd64.zip dist/release-app/
 
+      - name: Install NSIS
+        run: choco install nsis -y --no-progress
+
       - name: Build NSIS installer
         shell: pwsh
         run: |
+          $nsis = "${env:ProgramFiles(x86)}\NSIS"
+          if (-not (Test-Path "$nsis\makensis.exe")) {
+            throw "makensis.exe not found under $nsis after NSIS install"
+          }
+          $env:Path = "$nsis;$env:Path"
           $exe = Join-Path $PWD "dist/release-app/procpane-app.exe"
           $out = Join-Path $PWD "dist/release-app/procpane-windows-amd64-setup.exe"
-          makensis /V2 "/DAPP_EXE=$exe" "/DOUT_FILE=$out" scripts/release/procpane-windows-amd64.nsi
+          & "$nsis\makensis.exe" /V2 "/DAPP_EXE=$exe" "/DOUT_FILE=$out" scripts/release/procpane-windows-amd64.nsi
 
       - uses: actions/upload-artifact@v4
         with:
