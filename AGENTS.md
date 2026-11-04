@@ -29,7 +29,9 @@ Cross-platform **local** LISTEN (tcp/udp) panel: **CLI** + **tray GUI**. v1 = li
 
 # CLI (no cgo)
 CGO_ENABLED=0 go build -o bin/procpane ./cmd/procpane
-CGO_ENABLED=0 go test ./internal/... ./cmd/procpane/...
+./scripts/test-cli.sh
+# or: CGO_ENABLED=0 go test ./internal/... ./cmd/procpane/...
+# Full go test ./... needs cgo for cmd/procpane-app
 
 # Frontend
 cd frontend && npm ci && npm run build   # or ./scripts/build-frontend.sh
