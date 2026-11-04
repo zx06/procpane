@@ -84,7 +84,19 @@ Tray: **left-click** toggles window; **right-click** menu → refresh / quit. UI
 
 The popover defaults to **440×520** px (see `cmd/procpane-app/main.go`). CSS follows **system light/dark** via `prefers-color-scheme`. Branded icons live under [`assets/icons/`](assets/icons/) (macOS template PNG + app/tray assets).
 
-Headless Linux CI **does not** run the GUI (GTK4/WebKitGTK 6 not installed by design). Validate GUI on a desktop Mac or Windows machine (see Windows self-test below).
+### Automated browser UI tests (Playwright)
+
+CI runs Playwright against a **Wails server build** (`-tags server,production`), which hits the embedded Svelte UI and real Go bindings over HTTP. This does **not** cover the native tray, WebView window, or OS menus — test those manually per platform. Guide: [Wails v3 E2E testing](https://v3.wails.io/guides/e2e-testing/).
+
+```bash
+wails3 generate bindings -f '-tags=server' ./cmd/procpane-app ./internal/gui
+cd frontend && npm ci --ignore-engines && npm run build
+npx playwright install chromium && npm run test:e2e
+```
+
+On GitHub Actions, download **Artifacts** → `playwright-report` (HTML) or `playwright-test-results` (screenshots/traces).
+
+Headless Linux CI **does not** run the native GUI (GTK4/WebKitGTK 6 not installed by design). Validate tray/WebView on a desktop Mac or Windows machine (see Windows self-test below).
 
 ## Windows self-test
 
