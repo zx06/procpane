@@ -23,5 +23,6 @@ Kill is **not** supported on SSH rows.
 ## Consequences
 
 - Host/port/user are **not** edited in procpane settings (read from ssh_config).
-- Match blocks and exotic directives may be unsupported by the parser (documented limitation).
+- **Supported** (via `github.com/kevinburke/ssh_config` + B-go dial): `Include` (host listing expands includes; Get/GetAll honor nested files), `Hostname`, `Port`, `User`, `IdentityFile` (multiple via GetAll), `IdentitiesOnly`, `ConnectTimeout`, `ProxyCommand` (exec via `/bin/sh -c` with `%h` `%p` `%r` `%n` `%L` `%l` `%i` `%%`), `ProxyJump` (when no `ProxyCommand`; chained `-W`-style TCP forward per hop, each hop uses its own config).
+- **Remaining gaps**: `Match` blocks (parser error if present), `CertificateFile`, keyboard-interactive/password auth, strict host key verification, full OpenSSH `ProxyJump` URI forms, and every niche keyword.
 - Host key verification uses insecure ignore for MVP; production hardening deferred.

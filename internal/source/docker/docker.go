@@ -47,7 +47,13 @@ func (s *Source) ListListeners(ctx context.Context) ([]model.Listener, error) {
 		return nil, err
 	}
 
-	var out []model.Listener
+	type publishKey struct {
+		container string
+		proto     model.Protocol
+		pubPort   uint32
+	}
+	best := make(map[publishKey]model.Listener)
+
 	for _, c := range containers {
 		name := c.ID[:12]
 		if len(c.Names) > 0 {
@@ -78,7 +84,7 @@ func (s *Source) ListListeners(ctx context.Context) ([]model.Listener, error) {
 			}
 			pubPort := uint32(p.PublicPort)
 			id := fmt.Sprintf("docker-%s-%s-%d", shortID, mp, pubPort)
-			out = append(out, model.Listener{
+			row := model.Listener{
 				ID:            id,
 				Port:          pubPort,
 				Proto:         mp,
@@ -95,10 +101,33 @@ func (s *Source) ListListeners(ctx context.Context) ([]model.Listener, error) {
 				Image:         image,
 				PublishHost:   pubHost,
 				PublishPort:   pubPort,
-			})
+			}
+			key := publishKey{container: shortID, proto: mp, pubPort: pubPort}
+			if prev, ok := best[key]; !ok || publishHostRank(pubHost) > publishHostRank(prev.PublishHost) {
+				best[key] = row
+			}
 		}
 	}
+	out := make([]model.Listener, 0, len(best))
+	for _, l := range best {
+		out = append(out, l)
+	}
 	return out, nil
+}
+
+// publishHostRank prefers dual-stack bindings that represent all interfaces (0.0.0.0 over ::).
+func publishHostRank(host string) int {
+	switch host {
+	case "", "0.0.0.0":
+		return 3
+	case "::":
+		return 1
+	default:
+		if strings.Contains(host, ":") {
+			return 2
+		}
+		return 2
+	}
 }
 
 // Ping checks engine connectivity.

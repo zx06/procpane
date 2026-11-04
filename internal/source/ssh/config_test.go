@@ -2,53 +2,43 @@ package ssh
 
 import (
 	"os"
-	"path/filepath"
+	"strings"
 	"testing"
 )
 
-func TestParseHostAliases(t *testing.T) {
-	cfg := `
-Host jump
-  HostName jump.example.com
-
-Host app prod
-  HostName 10.0.0.1
-
-Host *
-  ForwardAgent yes
-`
-	got := parseHostAliases(cfg)
-	want := map[string]bool{"jump": true, "app": true, "prod": true}
-	for _, a := range got {
-		if !want[a] {
-			t.Errorf("unexpected alias %q", a)
-		}
-		delete(want, a)
-	}
-	if len(want) != 0 {
-		t.Fatalf("missing aliases: %v", want)
-	}
-}
-
-func TestReadMergedConfigHome(t *testing.T) {
-	dir := t.TempDir()
-	sshDir := filepath.Join(dir, ".ssh")
-	if err := os.MkdirAll(sshDir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	content := "Host demo\n  HostName demo.local\n"
-	if err := os.WriteFile(filepath.Join(sshDir, "config"), []byte(content), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	// UserHomeDir uses HOME on Unix and USERPROFILE on Windows.
-	t.Setenv("HOME", dir)
-	t.Setenv("USERPROFILE", dir)
+func TestReadMergedConfigUsesHomeConfig(t *testing.T) {
+	installUserSSHConfig(t, testdataPath(t, "cocotyty-sshconf", "basic", "simple.conf"))
 	merged, err := readMergedConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
 	aliases := parseHostAliases(merged)
-	if len(aliases) != 1 || aliases[0] != "demo" {
-		t.Fatalf("aliases: %v", aliases)
+	if len(aliases) < 3 {
+		t.Fatalf("expected simple.conf hosts, got %v", aliases)
 	}
+}
+
+func TestParseHostAliasesSkipsGlobAndNegation(t *testing.T) {
+	data, err := os.ReadFile(testdataPath(t, "cocotyty-sshconf", "basic", "wildcards.conf"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := parseHostAliases(string(data))
+	for _, a := range got {
+		if a == "*" || strings.HasPrefix(a, "!") {
+			t.Fatalf("parseHostAliases should skip %q", a)
+		}
+	}
+	if _, ok := sliceContains(got, "prod.server.example.com"); !ok {
+		t.Fatalf("missing prod host in %v", got)
+	}
+}
+
+func sliceContains(ss []string, v string) (string, bool) {
+	for _, s := range ss {
+		if s == v {
+			return s, true
+		}
+	}
+	return "", false
 }

@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/user"
 	"path/filepath"
 	"strings"
-	"time"
 
 	gossh "golang.org/x/crypto/ssh"
 	"github.com/zx06/procpane/internal/model"
@@ -50,58 +48,48 @@ func (s *Source) ListListeners(ctx context.Context) ([]model.Listener, error) {
 }
 
 func dial(ctx context.Context, entry HostEntry) (*gossh.Client, error) {
-	authMethods, err := authMethods(entry)
-	if err != nil {
-		return nil, err
-	}
 	port := entry.Port
 	if port == "" {
 		port = "22"
 	}
-	username := entry.User
-	if username == "" {
-		if u, err := user.Current(); err == nil {
-			username = u.Username
-		} else if username = os.Getenv("USER"); username == "" {
-			username = "root"
-		}
-	}
-	cfg := &gossh.ClientConfig{
-		User:            username,
-		Auth:            authMethods,
-		HostKeyCallback: gossh.InsecureIgnoreHostKey(),
-		Timeout:         15 * time.Second,
-	}
 	addr := net.JoinHostPort(entry.Hostname, port)
-	dialer := net.Dialer{Timeout: 15 * time.Second}
-	conn, err := dialer.DialContext(ctx, "tcp", addr)
+	conn, err := dialTransport(ctx, entry)
 	if err != nil {
 		return nil, fmt.Errorf("ssh dial %s: %w", entry.Alias, err)
 	}
-	c, chans, reqs, err := gossh.NewClientConn(conn, addr, cfg)
+	client, err := handshakeSSHClient(ctx, conn, addr, entry)
 	if err != nil {
-		conn.Close()
 		return nil, fmt.Errorf("ssh handshake %s: %w", entry.Alias, err)
 	}
-	return gossh.NewClient(c, chans, reqs), nil
+	return client, nil
 }
 
 func authMethods(entry HostEntry) ([]gossh.AuthMethod, error) {
 	var methods []gossh.AuthMethod
-	if sock := os.Getenv("SSH_AUTH_SOCK"); sock != "" {
-		if signers, err := signersFromAgent(sock); err == nil && len(signers) > 0 {
-			methods = append(methods, gossh.PublicKeys(signers...))
+	addKey := func(path string) {
+		path = expandHome(path)
+		if path == "" {
+			return
 		}
-	}
-	if entry.Identity != "" {
-		if key, err := loadPrivateKey(expandHome(entry.Identity)); err == nil {
+		if key, err := loadPrivateKey(path); err == nil {
 			methods = append(methods, gossh.PublicKeys(key))
 		}
 	}
-	home, _ := os.UserHomeDir()
-	for _, name := range []string{"id_ed25519", "id_rsa", "id_ecdsa"} {
-		if key, err := loadPrivateKey(filepath.Join(home, ".ssh", name)); err == nil {
-			methods = append(methods, gossh.PublicKeys(key))
+	for _, id := range entry.IdentityFiles {
+		addKey(id)
+	}
+	if entry.Identity != "" && len(entry.IdentityFiles) == 0 {
+		addKey(entry.Identity)
+	}
+	if !entry.IdentitiesOnly {
+		if sock := os.Getenv("SSH_AUTH_SOCK"); sock != "" {
+			if signers, err := signersFromAgent(sock); err == nil && len(signers) > 0 {
+				methods = append(methods, gossh.PublicKeys(signers...))
+			}
+		}
+		home, _ := os.UserHomeDir()
+		for _, name := range []string{"id_ed25519", "id_rsa", "id_ecdsa"} {
+			addKey(filepath.Join(home, ".ssh", name))
 		}
 	}
 	if len(methods) == 0 {
