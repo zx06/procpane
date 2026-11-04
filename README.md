@@ -2,7 +2,7 @@
 
 Cross-platform **local** process/port panel: see who is **LISTEN**ing on tcp/udp, inspect cmdline/cwd/parent chain, and end processes — via **CLI** or **menu-bar/tray GUI**.
 
-Spec: [grokbot-tasks#11](https://github.com/zx06/grokbot-tasks/issues/11) · Interactive UI reference: [`docs/design/prototype.html`](docs/design/prototype.html)
+Spec: [grokbot-tasks#11](https://github.com/zx06/grokbot-tasks/issues/11) · GUI: [`frontend/src/`](frontend/src/) (Svelte 5)
 
 ## Pinned stack (2026-11-04)
 
@@ -27,6 +27,21 @@ CGO_ENABLED=0 go build -o bin/procpane ./cmd/procpane
 ```
 
 No cgo required for the CLI.
+
+### Cross-compile CLI (from Linux/macOS/Windows)
+
+```bash
+# Windows (verified on Linux CI agent)
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o bin/procpane.exe ./cmd/procpane
+
+# macOS CLI binaries (pure Go — cross-build from Linux works; run on Mac to verify)
+GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -o bin/procpane-darwin-arm64 ./cmd/procpane
+GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o bin/procpane-darwin-amd64 ./cmd/procpane
+```
+
+**GUI** (`cmd/procpane-app`) must be built on the target OS (Wails + webview SDK). macOS menu bar / Windows tray builds are not cross-compiled from Linux.
+
+Automated CLI smoke: `./scripts/test-cli.sh`.
 
 ## CLI examples
 
@@ -67,6 +82,8 @@ procpane kill 12345 --yes --signal KILL
 
 Tray: **left-click** toggles window; **right-click** menu → refresh / quit. UI auto-refreshes ~2s (slower when unfocused).
 
+The popover defaults to **440×520** px (see `cmd/procpane-app/main.go`). CSS follows **system light/dark** via `prefers-color-scheme`. Branded icons live under [`assets/icons/`](assets/icons/) (macOS template PNG + app/tray assets).
+
 ### Automated browser UI tests (Playwright)
 
 CI runs Playwright against a **Wails server build** (`-tags server,production`), which hits the embedded Svelte UI and real Go bindings over HTTP. This does **not** cover the native tray, WebView window, or OS menus — test those manually per platform. Guide: [Wails v3 E2E testing](https://v3.wails.io/guides/e2e-testing/).
@@ -78,6 +95,23 @@ npx playwright install chromium && npm run test:e2e
 ```
 
 On GitHub Actions, download **Artifacts** → `playwright-report` (HTML) or `playwright-test-results` (screenshots/traces).
+
+Headless Linux CI **does not** run the native GUI (GTK4/WebKitGTK 6 not installed by design). Validate tray/WebView on a desktop Mac or Windows machine (see Windows self-test below).
+
+## Windows self-test
+
+On a Windows 10/11 machine with Go 1.27.3:
+
+1. **CLI** (no cgo):  
+   `set CGO_ENABLED=0`  
+   `go build -o procpane.exe .\cmd\procpane`
+2. **LISTEN**: `procpane.exe list` and `procpane.exe list --json` — expect tcp rows with port/pid/name (or `?` if enrich fails).
+3. **find**: start any local listener (e.g. `python -m http.server 8765`), then `procpane.exe find :8765`.
+4. **kill safety**: `procpane.exe kill 1` must print a refusal (non-zero exit).
+5. **kill confirm**: `procpane.exe kill <pid>` on a test process must prompt unless `--yes`.
+6. **GUI** (optional): install [WebView2 Evergreen Runtime](https://developer.microsoft.com/microsoft-edge/webview2/); build `go build -o procpane-app.exe .\cmd\procpane-app`; confirm system tray icon, window list matches CLI, kill uses confirmation modal.
+
+You can also copy `bin/procpane.exe` from a Linux cross-compile (`GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build …`) and run steps 2–5 without Go on Windows.
 
 ## Permissions & kill behavior
 

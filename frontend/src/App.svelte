@@ -124,15 +124,21 @@
 
 <div class="app">
   <div class="titlebar">
-    <h1>procpane — 本地监听端口</h1>
-    <span class="proto-badge">LISTEN only · v1 GUI</span>
+    <svg class="mark" viewBox="0 0 18 18" aria-hidden="true">
+      <rect x="2" y="2" width="14" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="1.2" />
+      <rect x="4.5" y="5" width="9" height="1.2" rx="0.6" fill="currentColor" />
+      <rect x="4.5" y="8.2" width="9" height="1.2" rx="0.6" fill="currentColor" />
+      <rect x="4.5" y="11.4" width="9" height="1.2" rx="0.6" fill="currentColor" />
+    </svg>
+    <h1>procpane</h1>
+    <span class="proto-badge">LISTEN · v1</span>
   </div>
 
   <div class="toolbar">
     <div class="search">
       <input
         type="search"
-        placeholder="按端口或进程名筛选…"
+        placeholder="端口 / 进程…"
         bind:value={query}
       />
     </div>
@@ -184,7 +190,7 @@
                 <td>
                   {r.name}
                   {#if r.leftover}
-                    <span style="color:var(--amber);font-size:10px"> leftover</span>
+                    <span class="leftover"> leftover</span>
                   {/if}
                 </td>
                 <td class={cpuClass(r.cpuPercent)}>{r.cpuPercent.toFixed(1)}%</td>
@@ -199,7 +205,7 @@
       </div>
       <div class="list-foot">
         <span>{filtered.length} 个监听</span>
-        <span>默认仅 LISTEN · tcp/udp</span>
+        <span>tcp/udp · LISTEN</span>
       </div>
     </div>
 
@@ -207,13 +213,13 @@
       {#if !selected}
         <div class="detail-empty">
           选择一行查看详情<br />
-          <span style="font-size:11px;opacity:.8">cmdline · cwd · 父进程链</span>
+          <span style="font-size:10px;opacity:.85">cmdline · cwd · 父进程链</span>
         </div>
       {:else}
-        <h2 style="margin:0 0 4px;font-size:15px">
-          {selected.name}{selected.leftover ? " · leftover" : ""}
-        </h2>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;font-family:monospace">
+        <div class="detail-hd">
+          <h2>{selected.name}{selected.leftover ? " · leftover" : ""}</h2>
+        </div>
+        <div class="detail-sub">
           :{selected.port} / {selected.proto.toUpperCase()} · PID {selected.pid}
         </div>
         <div class="kv">
@@ -234,23 +240,19 @@
             <div class="v">{selected.started}</div>
           </div>
         </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">PARENT CHAIN</div>
+        <div class="section-title">Parent chain</div>
         <div class="chain">
           {#each selected.chain as node, i}
             <div class="node">
-              <div
-                style="width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:10px;background:rgba(110,168,255,.12);color:var(--accent)"
-              >
-                {i + 1}
-              </div>
+              <div class="lvl">{i + 1}</div>
               <div>
                 <div>{node.name} · {node.pid}</div>
-                <div style="color:var(--muted);font-size:11px">{node.note}</div>
+                <div style="color:var(--muted);font-size:10px">{node.note}</div>
               </div>
             </div>
           {/each}
         </div>
-        <div style="display:flex;gap:8px">
+        <div class="detail-actions">
           <button type="button" class="btn danger" onclick={() => (killOpen = true)}>
             结束进程
           </button>
@@ -267,18 +269,12 @@
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="modal" onclick={(e) => e.stopPropagation()}>
       <div class="modal-hd">
-        <div
-          style="width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:rgba(240,113,120,.15);color:var(--rose);font-weight:700"
-        >
-          !
-        </div>
-        <h3 style="margin:0;font-size:14px">确认结束进程？</h3>
+        <div class="warn-icon">!</div>
+        <h3 style="margin:0;font-size:13px">确认结束进程？</h3>
       </div>
-      <div style="padding:14px 16px;font-size:13px;line-height:1.55">
+      <div class="modal-body">
         将向目标进程发送终止信号（SIGTERM）。结束后列表会刷新。
-        <div
-          style="font-family:monospace;background:#0a0c10;border:1px solid #232a38;border-radius:8px;padding:8px 10px;margin-top:10px;font-size:12px"
-        >
+        <div class="modal-snippet">
           PID {selected.pid} {selected.name} · :{selected.port}/{selected.proto}
         </div>
       </div>

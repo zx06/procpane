@@ -6,7 +6,7 @@ Accepted (2026-11-04)
 
 ## Context
 
-The GUI should match the interactive HTML prototype and stay easy for AI/humans to iterate.
+The GUI lives in `frontend/` (Svelte) and should stay easy for AI/humans to iterate without standalone HTML mocks in the repo.
 
 ## Decision
 

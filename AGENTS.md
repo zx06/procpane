@@ -18,8 +18,8 @@ Cross-platform **local** LISTEN (tcp/udp) panel: **CLI** + **tray GUI**. v1 = li
 | `internal/kill` | Safety + platform send |
 | `internal/format` | table / json |
 | `internal/gui` | Wails service for Svelte |
-| `frontend/` | Svelte 5 UI |
-| `docs/design/prototype.html` | Interaction reference |
+| `frontend/` | Svelte 5 UI (`src/App.svelte`, `src/app.css`) |
+| `assets/icons/` | Tray + app icons (embedded via `assets/icons/embed.go`) |
 
 ## Commands
 
@@ -29,7 +29,9 @@ Cross-platform **local** LISTEN (tcp/udp) panel: **CLI** + **tray GUI**. v1 = li
 
 # CLI (no cgo)
 CGO_ENABLED=0 go build -o bin/procpane ./cmd/procpane
-CGO_ENABLED=0 go test ./internal/... ./cmd/procpane/...
+./scripts/test-cli.sh
+# or: CGO_ENABLED=0 go test ./internal/... ./cmd/procpane/...
+# Full go test ./... needs cgo for cmd/procpane-app
 
 # Frontend
 cd frontend && npm ci && npm run build   # or ./scripts/build-frontend.sh
@@ -44,6 +46,11 @@ go build -o bin/procpane-app ./cmd/procpane-app
 - Do **not** bypass CLI/GUI confirmation for kill in user-facing flows.
 - Do **not** break `internal/model` JSON field names without ADR.
 - Do **not** call gopsutil from Svelte — only Go services.
+- Do **not** commit standalone HTML/UI prototype mocks — iterate in `frontend/` only.
+
+## GUI window (tray popover)
+
+Default size in `cmd/procpane-app/main.go`: **440×520** — compact menu-bar panel, not a full installer window. Design tokens and layout: `frontend/src/app.css`, `frontend/src/App.svelte`.
 
 ## Testing
 
