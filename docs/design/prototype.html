@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>procpane · 高保真原型</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --panel: #12161f;
+    --panel2: #181e2a;
+    --border: #2a3344;
+    --text: #e8edf7;
+    --muted: #8b97ad;
+    --accent: #6ea8ff;
+    --green: #3ecf8e;
+    --amber: #f0b429;
+    --rose: #f07178;
+    --cyan: #56d4dd;
+    --violet: #a78bfa;
+    --menubar: #1a1d24;
+    --win: #141820;
+    --row-hover: rgba(110,168,255,.08);
+    --row-active: rgba(110,168,255,.14);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, -apple-system, "SF Pro Text", "PingFang SC", "Noto Sans SC", "Segoe UI", sans-serif;
+    background: radial-gradient(1200px 600px at 20% -10%, #1a2740 0%, transparent 55%),
+                radial-gradient(900px 500px at 90% 10%, #1c1530 0%, transparent 50%),
+                var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  .sim-label {
+    position: sticky; top: 0; z-index: 50;
+    padding: 8px 22px;
+    background: rgba(240,180,41,.12);
+    border-bottom: 1px solid rgba(240,180,41,.35);
+    color: var(--amber); font-size: 12px;
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .sim-label .hint { color: var(--muted); }
+  .stage {
+    max-width: 1180px; margin: 0 auto; padding: 28px 22px 48px;
+  }
+
+  /* Desktop backdrop + fake menubar */
+  .desktop {
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+    background: linear-gradient(180deg, #0e1219, #0a0c11);
+    box-shadow: 0 24px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.03) inset;
+    position: relative;
+    min-height: 720px;
+  }
+  .menubar {
+    height: 28px;
+    background: linear-gradient(180deg, #2a2e38, #1e222a);
+    border-bottom: 1px solid #0a0c10;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px;
+    font-size: 12px; color: #d4d8e0;
+    user-select: none;
+  }
+  .menubar .left, .menubar .right { display: flex; align-items: center; gap: 14px; }
+  .menubar .apple {
+    width: 14px; height: 14px; border-radius: 3px;
+    background: linear-gradient(135deg, #6ea8ff, #a78bfa);
+  }
+  .menubar .app-name { font-weight: 600; letter-spacing: .2px; }
+  .menubar .item { color: #aeb6c6; }
+  .menubar .clock { font-variant-numeric: tabular-nums; color: #c9d0dc; }
+  .tray-icon {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 7px; border-radius: 6px;
+    background: rgba(110,168,255,.15); color: var(--accent);
+    font-size: 11px; font-weight: 600; cursor: pointer;
+    border: 1px solid rgba(110,168,255,.25);
+  }
+  .tray-icon:hover { background: rgba(110,168,255,.25); }
+  .tray-icon .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green); box-shadow: 0 0 6px var(--green);
+  }
+
+  /* Floating tray menu */
+  .tray-menu {
+    position: absolute; top: 34px; right: 18px; z-index: 40;
+    width: 200px;
+    background: rgba(28,32,42,.96);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 16px 40px rgba(0,0,0,.5);
+    padding: 6px;
+    display: none;
+    backdrop-filter: blur(12px);
+  }
+  .tray-menu.open { display: block; }
+  .tray-menu button {
+    width: 100%; text-align: left; border: 0; background: transparent;
+    color: var(--text); font-size: 12px; padding: 9px 12px;
+    border-radius: 8px; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .tray-menu button:hover { background: rgba(110,168,255,.14); }
+  .tray-menu .sep { height: 1px; background: var(--border); margin: 4px 6px; }
+  .tray-menu .kbd { color: var(--muted); font-size: 10px; }
+
+  /* Main popup window */
+  .window {
+    position: absolute;
+    left: 50%; top: 58px; transform: translateX(-50%);
+    width: min(920px, calc(100% - 48px));
+    background: linear-gradient(180deg, var(--panel2), var(--panel));
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 28px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.04) inset;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    max-height: calc(100% - 80px);
+  }
+  .window.hidden { display: none; }
+  .titlebar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,.025);
+    border-bottom: 1px solid var(--border);
+    cursor: default;
+  }
+  .traffic {
+    display: flex; gap: 7px;
+  }
+  .traffic span {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 1px solid rgba(0,0,0,.25);
+  }
+  .traffic .r { background: #ff5f57; }
+  .traffic .y { background: #febc2e; }
+  .traffic .g { background: #28c840; }
+  .titlebar h1 {
+    margin: 0; font-size: 13px; font-weight: 600; flex: 1;
+    letter-spacing: .2px;
+  }
+  .titlebar .proto-badge {
+    font-size: 10px; padding: 3px 8px; border-radius: 999px;
+    border: 1px solid rgba(240,180,41,.4); color: var(--amber);
+    background: rgba(240,180,41,.08);
+  }
+
+  .toolbar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 12px 14px; border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,.15);
+  }
+  .search {
+    flex: 1; min-width: 180px;
+    display: flex; align-items: center; gap: 8px;
+    background: #0a0c10; border: 1px solid #232a38;
+    border-radius: 10px; padding: 8px 12px;
+  }
+  .search svg { opacity: .55; flex-shrink: 0; }
+  .search input {
+    flex: 1; border: 0; outline: 0; background: transparent;
+    color: var(--text); font-size: 13px;
+  }
+  .search input::placeholder { color: #667288; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    cursor: pointer; border: 1px solid var(--border);
+    background: rgba(255,255,255,.03); color: var(--muted);
+    border-radius: 999px; padding: 6px 11px; font-size: 12px;
+  }
+  .chip:hover { border-color: rgba(110,168,255,.45); color: var(--text); }
+  .chip.on {
+    color: var(--text); border-color: rgba(110,168,255,.5);
+    background: rgba(110,168,255,.14);
+  }
+  .refresh-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--muted);
+    padding: 5px 10px; border-radius: 999px;
+    border: 1px solid var(--border); background: rgba(255,255,255,.02);
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .refresh-badge .pulse {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green); box-shadow: 0 0 8px rgba(62,207,142,.7);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  .refresh-badge.refreshing .pulse {
+    background: var(--amber); box-shadow: 0 0 8px rgba(240,180,41,.7);
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .55; transform: scale(.85); }
+  }
+  .btn {
+    cursor: pointer; border: 1px solid var(--border);
+    background: rgba(255,255,255,.04); color: var(--text);
+    border-radius: 10px; padding: 7px 12px; font-size: 12px;
+  }
+  .btn:hover { border-color: rgba(110,168,255,.55); }
+  .btn.primary {
+    background: linear-gradient(135deg, rgba(110,168,255,.28), rgba(167,139,250,.18));
+    border-color: rgba(110,168,255,.5);
+  }
+  .btn.danger {
+    background: rgba(240,113,120,.12); border-color: rgba(240,113,120,.45); color: #ffb4ba;
+  }
+  .btn.danger:hover { border-color: rgba(240,113,120,.75); background: rgba(240,113,120,.2); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .body {
+    display: grid; grid-template-columns: 1.35fr .95fr;
+    min-height: 460px; max-height: 560px;
+  }
+  @media (max-width: 860px) {
+    .body { grid-template-columns: 1fr; max-height: none; }
+  }
+
+  /* Table */
+  .list-pane {
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .table-wrap { overflow: auto; flex: 1; }
+  table {
+    width: 100%; border-collapse: collapse; font-size: 12.5px;
+  }
+  thead th {
+    position: sticky; top: 0; z-index: 2;
+    text-align: left; font-weight: 560; color: var(--muted);
+    background: #151922; border-bottom: 1px solid var(--border);
+    padding: 9px 12px; font-size: 11px; letter-spacing: .3px;
+  }
+  tbody tr {
+    cursor: pointer; border-bottom: 1px solid rgba(42,51,68,.55);
+    transition: background .12s ease;
+  }
+  tbody tr:hover { background: var(--row-hover); }
+  tbody tr.selected { background: var(--row-active); }
+  tbody td {
+    padding: 10px 12px; vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+  }
+  .port {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--accent); font-weight: 600;
+  }
+  .proto {
+    display: inline-block; min-width: 38px; text-align: center;
+    font-size: 10px; padding: 2px 7px; border-radius: 6px;
+    border: 1px solid var(--border); color: var(--muted);
+    text-transform: uppercase; letter-spacing: .4px;
+  }
+  .proto.tcp { color: var(--cyan); border-color: rgba(86,212,221,.35); background: rgba(86,212,221,.08); }
+  .proto.udp { color: var(--violet); border-color: rgba(167,139,250,.35); background: rgba(167,139,250,.08); }
+  .name { font-weight: 560; }
+  .pid { color: var(--muted); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+  .metric { color: #c5cddd; }
+  .metric.warn { color: var(--amber); }
+  .metric.hot { color: var(--rose); }
+  .empty {
+    padding: 48px 20px; text-align: center; color: var(--muted); font-size: 13px;
+  }
+  .list-foot {
+    padding: 8px 12px; border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 8px;
+    background: rgba(0,0,0,.18);
+  }
+
+  /* Detail panel */
+  .detail-pane {
+    padding: 14px 16px 16px; overflow: auto;
+    background: rgba(0,0,0,.12);
+  }
+  .detail-empty {
+    height: 100%; min-height: 280px;
+    display: grid; place-items: center;
+    color: var(--muted); font-size: 13px; text-align: center; line-height: 1.6;
+  }
+  .detail-hd {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 10px; margin-bottom: 14px;
+  }
+  .detail-hd h2 {
+    margin: 0; font-size: 15px; font-weight: 650;
+  }
+  .detail-hd .sub {
+    margin-top: 4px; font-size: 12px; color: var(--muted);
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+  }
+  .kv {
+    display: grid; gap: 8px; margin-bottom: 14px;
+  }
+  .kv .row {
+    display: grid; grid-template-columns: 72px 1fr; gap: 10px;
+    font-size: 12px; align-items: start;
+  }
+  .kv .k { color: var(--muted); padding-top: 2px; }
+  .kv .v {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: #d5deef; word-break: break-all; line-height: 1.45;
+    background: #0a0c10; border: 1px solid #232a38;
+    border-radius: 8px; padding: 7px 10px;
+  }
+  .kv .v.q { color: var(--amber); }
+  .section-title {
+    font-size: 11px; color: var(--muted); letter-spacing: .4px;
+    text-transform: uppercase; margin: 0 0 8px;
+  }
+  .chain {
+    border: 1px solid var(--border); border-radius: 10px;
+    background: rgba(255,255,255,.02); overflow: hidden; margin-bottom: 14px;
+  }
+  .chain .node {
+    padding: 9px 12px; border-bottom: 1px solid rgba(42,51,68,.6);
+    font-size: 12px; display: flex; gap: 10px; align-items: center;
+  }
+  .chain .node:last-child { border-bottom: 0; }
+  .chain .lvl {
+    width: 22px; height: 22px; border-radius: 7px;
+    display: grid; place-items: center; font-size: 10px; font-weight: 700;
+    background: rgba(110,168,255,.12); color: var(--accent); flex-shrink: 0;
+  }
+  .chain .meta { min-width: 0; }
+  .chain .pn { font-weight: 560; }
+  .chain .ps { color: var(--muted); font-size: 11px; margin-top: 2px;
+    font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .detail-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Modal */
+  .overlay {
+    position: absolute; inset: 0; z-index: 60;
+    background: rgba(6,8,12,.62);
+    display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(3px);
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    width: min(420px, calc(100% - 40px));
+    background: linear-gradient(180deg, #1c2230, #141820);
+    border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.55);
+    overflow: hidden;
+  }
+  .modal-hd {
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .modal-hd .warn-ico {
+    width: 28px; height: 28px; border-radius: 9px;
+    display: grid; place-items: center;
+    background: rgba(240,113,120,.15); color: var(--rose); font-weight: 700;
+  }
+  .modal-hd h3 { margin: 0; font-size: 14px; }
+  .modal-bd { padding: 14px 16px; font-size: 13px; color: #c9d4e8; line-height: 1.55; }
+  .modal-bd .mono {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    background: #0a0c10; border: 1px solid #232a38;
+    border-radius: 8px; padding: 8px 10px; margin-top: 10px;
+    font-size: 12px; color: #d5deef;
+  }
+  .modal-ft {
+    padding: 12px 16px 14px; display: flex; justify-content: flex-end; gap: 8px;
+    border-top: 1px solid var(--border); background: rgba(0,0,0,.15);
+  }
+
+  .toast {
+    position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%);
+    z-index: 70; display: none;
+    background: rgba(28,36,50,.96); border: 1px solid rgba(62,207,142,.4);
+    color: var(--green); font-size: 12px; padding: 10px 14px; border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0,0,0,.4);
+  }
+  .toast.show { display: block; animation: fadeup .25s ease; }
+  @keyframes fadeup {
+    from { opacity: 0; transform: translate(-50%, 8px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+  }
+
+  .footer-note {
+    margin-top: 14px; font-size: 11px; color: var(--muted);
+    display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  }
+  .wallpaper-hint {
+    position: absolute; left: 28px; bottom: 22px;
+    font-size: 11px; color: rgba(139,151,173,.55);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+  <div class="sim-label">
+    <span>高保真原型 · 示例数据 · 非真实进程/端口 · 讨论稿 zx06/grokbot-tasks#11（stage:idea）</span>
+    <span class="hint">左键菜单栏图标显隐窗口 · 右键托盘菜单 · 行点击展开详情</span>
+  </div>
+
+  <div class="stage">
+    <div class="desktop" id="desktop">
+      <div class="menubar">
+        <div class="left">
+          <div class="apple" title="Apple"></div>
+          <span class="app-name">procpane</span>
+          <span class="item">文件</span>
+          <span class="item">编辑</span>
+          <span class="item">查看</span>
+          <span class="item">帮助</span>
+        </div>
+        <div class="right">
+          <span class="clock" id="clock">周三 10:34</span>
+          <div class="tray-icon" id="trayIcon" title="左键显示/隐藏 · 右键菜单">
+            <span class="dot"></span>
+            <span>procpane</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tray-menu" id="trayMenu">
+        <button type="button" id="trayRefresh">刷新端口列表 <span class="kbd">⌘R</span></button>
+        <button type="button" id="trayToggle">显示 / 隐藏窗口</button>
+        <div class="sep"></div>
+        <button type="button" id="trayQuit">退出 procpane</button>
+      </div>
+
+      <div class="window" id="mainWindow">
+        <div class="titlebar">
+          <div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div>
+          <h1>procpane — 本地监听端口</h1>
+          <span class="proto-badge">LISTEN only · v1 GUI</span>
+        </div>
+
+        <div class="toolbar">
+          <div class="search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
+            </svg>
+            <input id="q" type="search" placeholder="按端口或进程名筛选…" autocomplete="off" />
+          </div>
+          <div class="chips" id="protoChips">
+            <button type="button" class="chip on" data-proto="all">全部</button>
+            <button type="button" class="chip" data-proto="tcp">TCP</button>
+            <button type="button" class="chip" data-proto="udp">UDP</button>
+          </div>
+          <div class="refresh-badge" id="refreshBadge" title="约 2s 自动刷新">
+            <span class="pulse"></span>
+            <span id="refreshText">已刷新 · 0.0s 前</span>
+          </div>
+          <button type="button" class="btn" id="btnRefresh">刷新</button>
+        </div>
+
+        <div class="body">
+          <div class="list-pane">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width:78px">Port</th>
+                    <th style="width:64px">Proto</th>
+                    <th style="width:72px">PID</th>
+                    <th>Name</th>
+                    <th style="width:64px">CPU</th>
+                    <th style="width:72px">Mem</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+              </table>
+              <div class="empty" id="empty" style="display:none">没有匹配的 LISTEN 端口</div>
+            </div>
+            <div class="list-foot">
+              <span id="countLabel">0 个监听</span>
+              <span>默认仅 LISTEN · tcp/udp</span>
+            </div>
+          </div>
+
+          <div class="detail-pane" id="detailPane">
+            <div class="detail-empty" id="detailEmpty">
+              选择一行查看详情<br/>
+              <span style="font-size:11px;opacity:.8">cmdline · cwd · 父进程链</span>
+            </div>
+            <div id="detailBody" style="display:none">
+              <div class="detail-hd">
+                <div>
+                  <h2 id="dName">—</h2>
+                  <div class="sub" id="dSub">—</div>
+                </div>
+              </div>
+              <div class="kv">
+                <div class="row"><div class="k">cmdline</div><div class="v" id="dCmd">—</div></div>
+                <div class="row"><div class="k">cwd</div><div class="v" id="dCwd">—</div></div>
+                <div class="row"><div class="k">user</div><div class="v" id="dUser">—</div></div>
+                <div class="row"><div class="k">started</div><div class="v" id="dStarted">—</div></div>
+              </div>
+              <div class="section-title">Parent chain</div>
+              <div class="chain" id="dChain"></div>
+              <div class="detail-actions">
+                <button type="button" class="btn danger" id="btnKill">结束进程</button>
+                <button type="button" class="btn" id="btnCopy">复制 cmdline</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wallpaper-hint">macOS menu bar / Windows tray · popup main window</div>
+
+      <div class="overlay" id="overlay">
+        <div class="modal" role="dialog" aria-modal="true">
+          <div class="modal-hd">
+            <div class="warn-ico">!</div>
+            <h3>确认结束进程？</h3>
+          </div>
+          <div class="modal-bd">
+            将向目标进程发送终止信号（模拟 SIGTERM）。结束后列表会刷新。
+            <div class="mono" id="killInfo">—</div>
+          </div>
+          <div class="modal-ft">
+            <button type="button" class="btn" id="killCancel">取消</button>
+            <button type="button" class="btn danger" id="killConfirm">结束进程</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="toast" id="toast">已结束进程并刷新列表</div>
+    </div>
+
+    <div class="footer-note">
+      <span>交互：筛选 / Proto chips / 行详情 / 结束确认 / 托盘显隐 · 数据为静态示例</span>
+      <span>style cues ← clawbot-proto/three-loop-console.html</span>
+    </div>
+  </div>
+
+<script>
+(function () {
+  const SAMPLE = [
+    {
+      id: "p22",
+      port: 22, proto: "tcp", pid: 812, name: "sshd",
+      cpu: 0.1, memMb: 18.4,
+      cmdline: "/usr/sbin/sshd -D -R",
+      cwd: "/",
+      user: "root",
+      started: "2026-10-12 09:01:22",
+      chain: [
+        { pid: 1, name: "launchd", note: "/" },
+        { pid: 812, name: "sshd", note: "listener" }
+      ]
+    },
+    {
+      id: "p3000",
+      port: 3000, proto: "tcp", pid: 18421, name: "node",
+      cpu: 2.4, memMb: 186.2,
+      cmdline: "node /Users/x_zhuo/dev/kinsight/apps/web/.next/server.js",
+      cwd: "/Users/x_zhuo/dev/kinsight/apps/web",
+      user: "x_zhuo",
+      started: "2026-11-04 09:12:03",
+      chain: [
+        { pid: 1, name: "launchd", note: "/" },
+        { pid: 540, name: "zsh", note: "/Users/x_zhuo" },
+        { pid: 18390, name: "npm", note: "run dev" },
+        { pid: 18421, name: "node", note: "next server" }
+      ]
+    },
+    {
+      id: "p5432",
+      port: 5432, proto: "tcp", pid: 902, name: "postgres",
+      cpu: 0.6, memMb: 94.8,
+      cmdline: "/opt/homebrew/opt/postgresql@16/bin/postgres -D /opt/homebrew/var/postgresql@16",
+      cwd: "/opt/homebrew/var/postgresql@16",
+      user: "x_zhuo",
+      started: "2026-11-03 21:44:10",
+      chain: [
+        { pid: 1, name: "launchd", note: "/" },
+        { pid: 902, name: "postgres", note: "primary" }
+      ]
+    },
+    {
+      id: "p8080",
+      port: 8080, proto: "tcp", pid: 22108, name: "go-server",
+      cpu: 12.8, memMb: 241.0,
+      cmdline: "/Users/x_zhuo/go/bin/go-server --addr :8080 --env local",
+      cwd: "?",
+      user: "x_zhuo",
+      started: "2026-11-04 08:02:41",
+      leftover: true,
+      chain: [
+        { pid: 1, name: "launchd", note: "/" },
+        { pid: 22108, name: "go-server", note: "orphan? parent exited" }
+      ]
+    },
+    {
+      id: "p5173",
+      port: 5173, proto: "tcp", pid: 19002, name: "vite",
+      cpu: 1.1, memMb: 132.5,
+      cmdline: "node /Users/x_zhuo/dev/opennow/node_modules/vite/bin/vite.js --port 5173",
+      cwd: "/Users/x_zhuo/dev/opennow",
+      user: "x_zhuo",
+      started: "2026-11-04 09:48:55",
+      chain: [
+        { pid: 1, name: "launchd", note: "/" },
+        { pid: 620, name: "zsh", note: "/Users/x_zhuo" },
+        { pid: 18980, name: "pnpm", note: "dev" },
+        { pid: 19002, name: "node", note: "vite" }
+      ]
+    },
+    {
+      id: "p53",
+      port: 53, proto: "udp", pid: 334, name: "mDNSResponder",
+      cpu: 0.0, memMb: 12.1,
+      cmdline: "/usr/sbin/mDNSResponder",
+      cwd: "/",
+      user: "root",
+      started: "2026-10-12 09:01:05",
+      chain: [
+        { pid: 1, name: "launchd", note: "/" },
+        { pid: 334, name: "mDNSResponder", note: "UDP :53" }
+      ]
+    },
+    {
+      id: "p5353",
+      port: 5353, proto: "udp", pid: 334, name: "mDNSResponder",
+      cpu: 0.0, memMb: 12.1,
+      cmdline: "/usr/sbin/mDNSResponder",
+      cwd: "/",
+      user: "_mdnsresponder",
+      started: "2026-10-12 09:01:05",
+      chain: [
+        { pid: 1, name: "launchd", note: "/" },
+        { pid: 334, name: "mDNSResponder", note: "UDP :5353" }
+      ]
+    },
+    {
+      id: "p6379",
+      port: 6379, proto: "tcp", pid: 1104, name: "redis-server",
+      cpu: 0.3, memMb: 28.6,
+      cmdline: "redis-server *:6379",
+      cwd: "/opt/homebrew/var/db/redis",
+      user: "x_zhuo",
+      started: "2026-11-03 22:10:18",
+      chain: [
+        { pid: 1, name: "launchd", note: "/" },
+        { pid: 1104, name: "redis-server", note: "*:6379" }
+      ]
+    }
+  ];
+
+  let rows = SAMPLE.map(r => ({ ...r }));
+  let selectedId = null;
+  let protoFilter = "all";
+  let query = "";
+  let lastRefresh = Date.now();
+  let refreshTimer = null;
+
+  const $ = (id) => document.getElementById(id);
+  const tbody = $("tbody");
+  const empty = $("empty");
+  const detailEmpty = $("detailEmpty");
+  const detailBody = $("detailBody");
+  const overlay = $("overlay");
+  const trayMenu = $("trayMenu");
+  const mainWindow = $("mainWindow");
+  const refreshBadge = $("refreshBadge");
+  const refreshText = $("refreshText");
+  const toast = $("toast");
+
+  function fmtMem(mb) {
+    return mb >= 100 ? mb.toFixed(0) + " MB" : mb.toFixed(1) + " MB";
+  }
+  function cpuClass(c) {
+    if (c >= 10) return "metric hot";
+    if (c >= 5) return "metric warn";
+    return "metric";
+  }
+
+  function filtered() {
+    const q = query.trim().toLowerCase();
+    return rows.filter(r => {
+      if (protoFilter !== "all" && r.proto !== protoFilter) return false;
+      if (!q) return true;
+      return String(r.port).includes(q) || r.name.toLowerCase().includes(q) ||
+        String(r.pid).includes(q);
+    });
+  }
+
+  function renderList() {
+    const list = filtered();
+    tbody.innerHTML = "";
+    empty.style.display = list.length ? "none" : "block";
+    $("countLabel").textContent = list.length + " 个监听" +
+      (list.length !== rows.length ? "（已筛选 / 共 " + rows.length + "）" : "");
+
+    list.forEach(r => {
+      const tr = document.createElement("tr");
+      if (r.id === selectedId) tr.classList.add("selected");
+      tr.dataset.id = r.id;
+      tr.innerHTML =
+        '<td class="port">:' + r.port + '</td>' +
+        '<td><span class="proto ' + r.proto + '">' + r.proto + '</span></td>' +
+        '<td class="pid">' + r.pid + '</td>' +
+        '<td class="name">' + escapeHtml(r.name) +
+          (r.leftover ? ' <span style="color:var(--amber);font-size:10px">leftover</span>' : '') +
+        '</td>' +
+        '<td class="' + cpuClass(r.cpu) + '">' + r.cpu.toFixed(1) + '%</td>' +
+        '<td class="metric">' + fmtMem(r.memMb) + '</td>';
+      tr.addEventListener("click", () => selectRow(r.id));
+      tbody.appendChild(tr);
+    });
+
+    if (selectedId && !rows.find(r => r.id === selectedId)) {
+      selectedId = null;
+      renderDetail();
+    } else if (selectedId && !list.find(r => r.id === selectedId)) {
+      // keep selection data but clear visual if filtered out
+      renderDetail();
+    }
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+    })[c]);
+  }
+
+  function selectRow(id) {
+    selectedId = id;
+    renderList();
+    renderDetail();
+  }
+
+  function renderDetail() {
+    const r = rows.find(x => x.id === selectedId);
+    if (!r) {
+      detailEmpty.style.display = "grid";
+      detailBody.style.display = "none";
+      return;
+    }
+    detailEmpty.style.display = "none";
+    detailBody.style.display = "block";
+    $("dName").textContent = r.name + (r.leftover ? "  · leftover" : "");
+    $("dSub").textContent = ":" + r.port + " / " + r.proto.toUpperCase() + " · PID " + r.pid;
+    $("dCmd").textContent = r.cmdline;
+    $("dCwd").textContent = r.cwd;
+    $("dCwd").classList.toggle("q", r.cwd === "?");
+    $("dUser").textContent = r.user;
+    $("dStarted").textContent = r.started;
+    const chain = $("dChain");
+    chain.innerHTML = r.chain.map((n, i) =>
+      '<div class="node"><div class="lvl">' + (i + 1) + '</div><div class="meta">' +
+      '<div class="pn">' + escapeHtml(n.name) + ' <span style="color:var(--muted);font-weight:400">· ' + n.pid + '</span></div>' +
+      '<div class="ps">' + escapeHtml(n.note) + '</div></div></div>'
+    ).join("");
+  }
+
+  function doRefresh(cosmetic) {
+    refreshBadge.classList.add("refreshing");
+    refreshText.textContent = "刷新中…";
+    // slight CPU jitter for live-ish feel
+    rows.forEach(r => {
+      const jitter = (Math.random() - 0.5) * 0.4;
+      r.cpu = Math.max(0, Math.round((r.cpu + jitter) * 10) / 10);
+    });
+    setTimeout(() => {
+      lastRefresh = Date.now();
+      refreshBadge.classList.remove("refreshing");
+      renderList();
+      renderDetail();
+      tickRefreshLabel();
+    }, cosmetic ? 280 : 180);
+  }
+
+  function tickRefreshLabel() {
+    const sec = ((Date.now() - lastRefresh) / 1000);
+    refreshText.textContent = "已刷新 · " + sec.toFixed(1) + "s 前";
+  }
+
+  function openKill() {
+    const r = rows.find(x => x.id === selectedId);
+    if (!r) return;
+    $("killInfo").textContent = "PID " + r.pid + "  " + r.name + "  ·  :" + r.port + "/" + r.proto;
+    overlay.classList.add("open");
+  }
+
+  function closeKill() {
+    overlay.classList.remove("open");
+  }
+
+  // Fix kill to use working rows correctly
+  function confirmKill() {
+    const r = rows.find(x => x.id === selectedId);
+    if (!r) { closeKill(); return; }
+    const killedId = r.id;
+    rows = rows.filter(x => x.id !== killedId);
+    selectedId = null;
+    closeKill();
+    showToast("已结束 " + r.name + " (PID " + r.pid + ") · 列表已刷新");
+    doRefresh(true);
+    renderDetail();
+  }
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 2200);
+  }
+
+  // Events
+  $("q").addEventListener("input", e => {
+    query = e.target.value;
+    renderList();
+  });
+
+  document.querySelectorAll("#protoChips .chip").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#protoChips .chip").forEach(c => c.classList.remove("on"));
+      btn.classList.add("on");
+      protoFilter = btn.dataset.proto;
+      renderList();
+    });
+  });
+
+  $("btnRefresh").addEventListener("click", () => doRefresh(true));
+  $("btnKill").addEventListener("click", openKill);
+  $("killCancel").addEventListener("click", closeKill);
+  $("killConfirm").addEventListener("click", confirmKill);
+  overlay.addEventListener("click", e => { if (e.target === overlay) closeKill(); });
+
+  $("btnCopy").addEventListener("click", () => {
+    const r = rows.find(x => x.id === selectedId);
+    if (!r) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(r.cmdline).then(() => showToast("已复制 cmdline")).catch(() => showToast("复制失败（浏览器限制）"));
+    } else {
+      showToast("clipboard 不可用");
+    }
+  });
+
+  // Tray: left = toggle window; right = menu
+  $("trayIcon").addEventListener("click", e => {
+    e.preventDefault();
+    trayMenu.classList.remove("open");
+    mainWindow.classList.toggle("hidden");
+  });
+  $("trayIcon").addEventListener("contextmenu", e => {
+    e.preventDefault();
+    trayMenu.classList.toggle("open");
+  });
+  $("trayRefresh").addEventListener("click", () => {
+    trayMenu.classList.remove("open");
+    doRefresh(true);
+  });
+  $("trayToggle").addEventListener("click", () => {
+    trayMenu.classList.remove("open");
+    mainWindow.classList.toggle("hidden");
+  });
+  $("trayQuit").addEventListener("click", () => {
+    trayMenu.classList.remove("open");
+    mainWindow.classList.add("hidden");
+    showToast("已退出（原型模拟）· 点击菜单栏图标可再打开");
+  });
+  document.addEventListener("click", e => {
+    if (!trayMenu.contains(e.target) && e.target !== $("trayIcon") && !($("trayIcon").contains(e.target))) {
+      trayMenu.classList.remove("open");
+    }
+  });
+
+  // Clock
+  function tickClock() {
+    const now = new Date();
+    const days = ["日","一","二","三","四","五","六"];
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    $("clock").textContent = "周" + days[now.getDay()] + " " + hh + ":" + mm;
+  }
+
+  // Auto ~2s refresh indicator + soft refresh every 2s
+  setInterval(() => {
+    tickRefreshLabel();
+    const elapsed = Date.now() - lastRefresh;
+    if (elapsed >= 2000) doRefresh(false);
+  }, 200);
+
+  // Deep-link / screenshot helpers: ?view=main|detail|kill&id=p8080
+  function applyViewFromQuery() {
+    const params = new URLSearchParams(location.search);
+    const view = params.get("view") || "main";
+    const id = params.get("id") || "p8080";
+    if (view === "detail" || view === "kill") {
+      if (rows.find(r => r.id === id)) selectRow(id);
+      else if (rows[0]) selectRow(rows[0].id);
+    }
+    if (view === "kill") {
+      // open modal after paint
+      setTimeout(openKill, 50);
+    }
+    // Freeze auto refresh for stable screenshots when view param present
+    if (params.has("view")) {
+      // leave timer but reset lastRefresh often via patching — actually stop auto mutate
+      lastRefresh = Date.now();
+    }
+  }
+
+  // Init
+  tickClock();
+  setInterval(tickClock, 15000);
+  renderList();
+  renderDetail();
+  tickRefreshLabel();
+  applyViewFromQuery();
+
+  // Expose for headless scripting
+  window.__procpane = {
+    select: selectRow,
+    openKill,
+    closeKill,
+    doRefresh,
+    rows: () => rows
+  };
+})();
+</script>
+</body>
+</html>
