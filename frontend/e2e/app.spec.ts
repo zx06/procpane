@@ -1,6 +1,83 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+async function selectSourceTab(
+  page: Page,
+  label: "本机" | "Docker" | "SSH",
+) {
+  const nav = page.getByRole("navigation", { name: "数据源" });
+  await expect(nav).toBeVisible();
+  await nav.getByRole("button", { name: label, exact: true }).click();
+}
 
 test.describe("procpane UI (server build)", () => {
+  test("smoke: source tabs 本机 / Docker / SSH", async ({ page }) => {
+    await page.goto("/");
+
+    const tabs = page.locator("nav.source-tabs");
+    await expect(tabs).toBeVisible();
+    await expect(tabs.getByRole("button", { name: "本机", exact: true })).toBeVisible();
+    await expect(tabs.getByRole("button", { name: "Docker", exact: true })).toBeVisible();
+    await expect(tabs.getByRole("button", { name: "SSH", exact: true })).toBeVisible();
+
+    // Default tab remains local.
+    await expect(page.getByText("本地 LISTEN 端口")).toBeVisible();
+    await expect(tabs.getByRole("button", { name: "本机", exact: true })).toHaveClass(/on/);
+  });
+
+  test("docker tab: panel and unreachable or empty state (no daemon required)", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await selectSourceTab(page, "Docker");
+
+    await expect(page.getByRole("heading", { name: "Docker", exact: true })).toBeVisible();
+    await expect(page.getByText("已发布端口（Engine API）")).toBeVisible();
+
+    const hintDisconnected = page.getByText(/Docker 未连接/);
+    const emptyError = page.getByText(/无法连接 Docker Engine|加载失败/);
+    const emptyPublished = page.getByText("没有已发布的容器端口");
+    const dockerCards = page.locator(".cards-scroll .docker-card");
+    const hintOk = page.getByText(/^Engine · /);
+    const dockerHint = page.getByText(/DOCKER_HOST|本地 socket/);
+
+    await expect(
+      hintDisconnected
+        .or(emptyError)
+        .or(emptyPublished)
+        .or(dockerCards.first())
+        .or(hintOk),
+    ).toBeVisible({ timeout: 30_000 });
+
+    // CI usually has no Engine — still expect user-facing guidance somewhere.
+    if (await hintDisconnected.isVisible().catch(() => false)) {
+      await expect(emptyError.or(dockerHint)).toBeVisible();
+    }
+  });
+
+  test("ssh tab: empty state or enabled host chips", async ({ page }) => {
+    await page.goto("/");
+    await selectSourceTab(page, "SSH");
+
+    await expect(page.getByRole("heading", { name: "SSH", exact: true })).toBeVisible();
+    await expect(page.getByText("已启用主机的 LISTEN")).toBeVisible();
+
+    const empty = page.getByText("尚未启用任何 SSH 主机");
+    const settingsCta = page.getByRole("button", {
+      name: "去设置启用 SSH 主机",
+    });
+    const hostChip = page.locator(".host-chips .host-chip").first();
+    const sshEmptyList = page.getByText("没有 LISTEN 端口");
+    const sshCards = page.locator(".cards-scroll .pcard");
+
+    await expect(empty.or(hostChip).or(sshEmptyList).or(sshCards.first())).toBeVisible({
+      timeout: 30_000,
+    });
+
+    if (await empty.isVisible().catch(() => false)) {
+      await expect(settingsCta).toBeVisible();
+    }
+  });
+
   test("smoke: shell, filters, and card stack pane", async ({ page }) => {
     await page.goto("/");
 
@@ -117,6 +194,7 @@ test.describe("procpane UI (server build)", () => {
 
   test("interaction: proto chips toggle without error", async ({ page }) => {
     await page.goto("/");
+    await selectSourceTab(page, "本机");
     await expect(page.locator(".cards-scroll")).toBeVisible();
 
     for (const label of ["TCP", "UDP", "全部"] as const) {
@@ -146,5 +224,21 @@ test.describe("procpane UI (server build)", () => {
     await expect(page.getByText(/已刷新 · .*s 前/)).toBeVisible({
       timeout: 30_000,
     });
+  });
+});
+
+test.describe("procpane settings (server build, /settings.html)", () => {
+  test("smoke: settings page loads Docker read-only and SSH host list", async ({
+    page,
+  }) => {
+    await page.goto("/settings.html");
+
+    await expect(page.getByRole("heading", { name: /procpane 设置/i })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole("heading", { name: "Docker", exact: true })).toBeVisible();
+    await expect(page.getByText("Endpoint")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "SSH 主机", exact: true })).toBeVisible();
+    await expect(page.getByText(/~\/\.ssh\/config/)).toBeVisible();
   });
 });
