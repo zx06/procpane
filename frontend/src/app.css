@@ -755,11 +755,31 @@ body {
   border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--hair));
 }
 
+html.settings-root,
+html.settings-root body,
+html.settings-root #app {
+  height: 100%;
+  overflow: hidden;
+}
+
 .settings-app {
-  min-height: 100vh;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-app-region: no-drag;
   padding: 16px 18px 24px;
   background: var(--pop);
   color: var(--text);
+}
+
+.settings-app::-webkit-scrollbar {
+  width: 8px;
+}
+
+.settings-app::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted) 35%, transparent);
+  border-radius: 8px;
 }
 
 .settings-hd h1 {

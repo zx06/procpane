@@ -246,4 +246,47 @@ test.describe("procpane settings (server build, /settings.html)", () => {
     await expect(page.getByRole("heading", { name: "SSH 主机", exact: true })).toBeVisible();
     await expect(page.getByText(/~\/\.ssh\/config/)).toBeVisible();
   });
+
+  test("settings scroll root allows overflow (matches fixed settings window)", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 420, height: 480 });
+    await page.goto("/settings.html");
+
+    await expect(page.getByRole("heading", { name: /procpane 设置/i })).toBeVisible({
+      timeout: 30_000,
+    });
+
+    const scrollRoot = page.locator(".settings-app");
+    await expect(scrollRoot).toBeVisible();
+
+    const overflowY = await scrollRoot.evaluate(
+      (el) => getComputedStyle(el).overflowY,
+    );
+    expect(overflowY).toBe("auto");
+
+    await page.evaluate(() => {
+      const root = document.querySelector(".settings-app");
+      if (!root) throw new Error("missing .settings-app");
+      let ul = root.querySelector(".host-list");
+      if (!ul) {
+        ul = document.createElement("ul");
+        ul.className = "host-list";
+        root.appendChild(ul);
+      }
+      for (let i = 0; i < 40; i++) {
+        const li = document.createElement("li");
+        li.textContent = `scroll-fixture-${i}`;
+        li.style.padding = "12px 0";
+        ul.appendChild(li);
+      }
+    });
+
+    const scrolled = await scrollRoot.evaluate((el) => {
+      const before = el.scrollTop;
+      el.scrollTop = el.scrollHeight;
+      return el.scrollTop > before;
+    });
+    expect(scrolled).toBe(true);
+  });
 });
