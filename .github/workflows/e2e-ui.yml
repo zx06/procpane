@@ -73,23 +73,12 @@ jobs:
           path: frontend/test-results/
           retention-days: 14
 
-      - name: Ensure GitHub CLI supports PR attachments
-        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        run: |
-          if gh pr comment --help 2>&1 | grep -q -- '--attach'; then
-            gh --version
-            exit 0
-          fi
-          curl -fsSL "https://github.com/cli/cli/releases/download/v2.99.0/gh_2.99.0_linux_amd64.tar.gz" -o /tmp/gh.tgz
-          tar -xzf /tmp/gh.tgz -C /tmp
-          sudo install -m 755 /tmp/gh_2.99.0_linux_amd64/bin/gh /usr/local/bin/gh
-          gh --version
-
       - name: Post E2E screenshots on pull request
         if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         working-directory: .
         env:
           GH_TOKEN: ${{ github.token }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_RUN_ID: ${{ github.run_id }}
