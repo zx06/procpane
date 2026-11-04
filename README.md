@@ -41,7 +41,7 @@ GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o bin/procpane-darwin-amd64 ./c
 
 **GUI** (`cmd/procpane-app`) must be built on the target OS (Wails + webview SDK). macOS menu bar / Windows tray builds are not cross-compiled from Linux.
 
-Automated CLI smoke: `./scripts/test-cli.sh`.
+Automated CLI smoke: `./scripts/test-cli.sh` (local) or GitHub Actions **cli** workflow on **ubuntu-latest**, **macos-14**, and **windows-latest** (native binary smoke on each OS).
 
 ## CLI examples
 
@@ -96,7 +96,7 @@ npx playwright install chromium && npm run test:e2e
 
 On GitHub Actions, download **Artifacts** → `playwright-report` (HTML) or `playwright-test-results` (screenshots/traces).
 
-Headless Linux CI **does not** run the native GUI (GTK4/WebKitGTK 6 not installed by design). Validate tray/WebView on a desktop Mac or Windows machine (see Windows self-test below).
+CI **cli** jobs compile `cmd/procpane-app` on each matrix OS (Linux installs GTK4/WebKitGTK 6 for the build) but do **not** run the native tray/WebView app. Playwright on ubuntu covers the Wails **server** UI path only. Validate tray/WebView on a desktop Mac or Windows machine (see Windows self-test below).
 
 ## Windows self-test
 

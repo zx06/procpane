@@ -7,17 +7,38 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            gui_deps: apt
+          - os: macos-14
+            gui_deps: none
+          - os: windows-latest
+            gui_deps: none
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
           go-version: "1.27.3"
-      - name: CLI tests and smoke
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Install Linux GUI build deps (GTK4 / WebKitGTK 6)
+        if: matrix.gui_deps == 'apt'
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq jq python3
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libgtk-4-dev libwebkitgtk-6.0-dev pkg-config
+
+      - name: CLI tests and smoke
+        shell: bash
+        run: |
           chmod +x scripts/test-cli.sh
           ./scripts/test-cli.sh
-      - name: Cross-compile Windows CLI
-        run: |
-          GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o bin/procpane.exe ./cmd/procpane
+
+      - name: Build GUI binary (compile smoke)
+        shell: bash
+        run: CGO_ENABLED=1 go build -o bin/procpane-app ./cmd/procpane-app
