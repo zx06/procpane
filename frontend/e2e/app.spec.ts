@@ -34,23 +34,27 @@ test.describe("procpane UI (server build)", () => {
     await expect(page.getByText("已发布端口（Engine API）")).toBeVisible();
 
     const hintDisconnected = page.getByText(/Docker 未连接/);
-    const emptyError = page.getByText(/无法连接 Docker Engine|加载失败/);
+    const hintOk = page.getByText(/^Engine · /);
     const emptyPublished = page.getByText("没有已发布的容器端口");
     const dockerCards = page.locator(".cards-scroll .docker-card");
-    const hintOk = page.getByText(/^Engine · /);
     const dockerHint = page.getByText(/DOCKER_HOST|本地 socket/);
+    const emptyError = page.getByText(/无法连接 Docker Engine|加载失败/);
 
-    await expect(
-      hintDisconnected
-        .or(emptyError)
-        .or(emptyPublished)
-        .or(dockerCards.first())
-        .or(hintOk),
-    ).toBeVisible({ timeout: 30_000 });
+    // Wait until Docker status probe finishes (connected or not).
+    await expect
+      .poll(
+        async () =>
+          (await hintDisconnected.isVisible()) || (await hintOk.isVisible()),
+        { timeout: 30_000 },
+      )
+      .toBe(true);
 
-    // CI usually has no Engine — still expect user-facing guidance somewhere.
-    if (await hintDisconnected.isVisible().catch(() => false)) {
-      await expect(emptyError.or(dockerHint)).toBeVisible();
+    if (await hintDisconnected.isVisible()) {
+      await expect(emptyError.or(dockerHint).first()).toBeVisible();
+    } else {
+      // Engine reachable: empty list and/or published-port cards (both may show).
+      await expect(hintOk).toBeVisible();
+      await expect(emptyPublished.or(dockerCards.first())).toBeVisible();
     }
   });
 
