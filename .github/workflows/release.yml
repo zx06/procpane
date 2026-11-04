@@ -169,6 +169,12 @@ jobs:
           Compress-Archive -Path dist/release-app/procpane-app.exe -DestinationPath procpane-app-windows-amd64.zip -Force
           Move-Item procpane-app-windows-amd64.zip dist/release-app/
 
+      - name: Install NSIS
+        shell: pwsh
+        run: |
+          choco install nsis -y
+          echo "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
       - name: Build NSIS installer
         shell: pwsh
         run: |

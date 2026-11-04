@@ -15,6 +15,8 @@ if [ ! -f "$binary" ]; then
 fi
 
 mkdir -p "$out_dir"
+binary="$(cd "$(dirname "$binary")" && pwd)/$(basename "$binary")"
+out_dir="$(cd "$out_dir" && pwd)"
 staging="$(mktemp -d)"
 trap 'rm -rf "$staging"' EXIT
 
