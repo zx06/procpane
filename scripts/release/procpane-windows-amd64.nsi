@@ -13,8 +13,8 @@
 Name "procpane"
 OutFile "${OUT_FILE}"
 InstallDir "$PROGRAMFILES64\procpane"
-InstallDirRegKey HKCU "Software\procpane" ""
-RequestExecutionLevel user
+InstallDirRegKey HKLM "Software\procpane" ""
+RequestExecutionLevel admin
 Unicode true
 
 !define MUI_ABORTWARNING
@@ -31,9 +31,13 @@ Section "Install"
   SetOutPath "$INSTDIR"
   File "${APP_EXE}"
 
-  WriteRegStr HKCU "Software\procpane" "" $INSTDIR
+  WriteRegStr HKLM "Software\procpane" "" $INSTDIR
 
   WriteUninstaller "$INSTDIR\Uninstall.exe"
+
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\procpane" "DisplayName" "procpane"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\procpane" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\procpane" "InstallLocation" "$INSTDIR"
 
   CreateDirectory "$SMPROGRAMS\procpane"
   CreateShortCut "$SMPROGRAMS\procpane\procpane.lnk" "$INSTDIR\procpane-app.exe"
@@ -49,5 +53,6 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\procpane\Uninstall procpane.lnk"
   RMDir "$SMPROGRAMS\procpane"
 
-  DeleteRegKey HKCU "Software\procpane"
+  DeleteRegKey HKLM "Software\procpane"
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\procpane"
 SectionEnd
