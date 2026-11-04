@@ -97,10 +97,11 @@
     selectedId = null;
   }
 
-  async function copyCmdline(r: Listener) {
+  async function copyValue(e: MouseEvent, label: string, text: string) {
+    e.stopPropagation();
     try {
-      await navigator.clipboard.writeText(r.cmdline);
-      showToast("已复制 cmdline");
+      await navigator.clipboard.writeText(text);
+      showToast(`已复制 ${label}`);
     } catch {
       showToast("复制失败");
     }
@@ -110,11 +111,6 @@
     e.stopPropagation();
     selectedId = r.id;
     killOpen = true;
-  }
-
-  function onCopyClick(e: MouseEvent, r: Listener) {
-    e.stopPropagation();
-    copyCmdline(r);
   }
 
   async function handleQuit() {
@@ -264,15 +260,41 @@
                 <div class="kv">
                   <div class="r">
                     <div class="k">cmdline</div>
-                    <div class="v">{r.cmdline}</div>
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                    <div
+                      class="v copyable"
+                      title="点击复制"
+                      onclick={(e) => copyValue(e, "cmdline", r.cmdline)}
+                    >
+                      {r.cmdline}
+                    </div>
                   </div>
                   <div class="r">
                     <div class="k">cwd</div>
-                    <div class="v" class:q={r.cwd === "?"}>{r.cwd}</div>
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                    <div
+                      class="v copyable"
+                      class:q={r.cwd === "?"}
+                      title="点击复制"
+                      onclick={(e) => copyValue(e, "cwd", r.cwd)}
+                    >
+                      {r.cwd}
+                    </div>
                   </div>
                   <div class="r">
                     <div class="k">user</div>
-                    <div class="v">{r.user} · {r.started}</div>
+                    <!-- svelte-ignore a11y_click_events_have_key_events -->
+                    <!-- svelte-ignore a11y_no_static_element_interactions -->
+                    <div
+                      class="v copyable"
+                      title="点击复制"
+                      onclick={(e) =>
+                        copyValue(e, "user", `${r.user} · ${r.started}`)}
+                    >
+                      {r.user} · {r.started}
+                    </div>
                   </div>
                 </div>
                 {#if r.chain.length > 0}
@@ -288,9 +310,6 @@
                 <div class="acts">
                   <button type="button" class="btn danger" onclick={(e) => openKill(e, r)}>
                     结束进程
-                  </button>
-                  <button type="button" class="btn" onclick={(e) => onCopyClick(e, r)}>
-                    复制 cmdline
                   </button>
                 </div>
               </div>

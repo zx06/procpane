@@ -408,6 +408,18 @@ body {
   word-break: break-all;
 }
 
+.kv .v.copyable {
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.kv .v.copyable:hover {
+  background: var(--accent-soft);
+  border-color: var(--hair);
+}
+
 .kv .v.q {
   color: var(--warn);
 }
