@@ -16,14 +16,17 @@ Re-run `./scripts/check-pins.sh` after bumping versions; update README in the sa
 ## Commits
 
 - Focused messages; behavior changes that affect contracts should mention ADR/model.
-- Run `CGO_ENABLED=0 go test ./internal/... ./cmd/procpane/...` before push.
+- Run `./scripts/test-cli.sh` (or `CGO_ENABLED=0 go test ./internal/... ./cmd/procpane/...`) before push.
+- Note: `go test ./...` with `CGO_ENABLED=0` fails on `cmd/procpane-app` (Wails needs cgo). CI uses `scripts/test-cli.sh` only.
 
 ## Cross-platform checklist
 
-- [ ] Linux: `procpane list --json`
-- [ ] macOS: tray show/hide (manual)
-- [ ] Windows: `go build ./cmd/procpane-app` on dev machine with WebView2
-- [ ] Kill confirmation CLI + GUI modal
+See **[`docs/self-test.md`](docs/self-test.md)** for the full matrix (Linux automated evidence in `evidence/linux-smoke-2026-11-04.txt`).
+
+- [x] Linux CLI: list / json / find / show / refuse kill 1 (CI + evidence file)
+- [ ] macOS: menu bar tray + GUI parity with CLI
+- [ ] Windows: CLI steps in README “Windows self-test”; GUI + WebView2
+- [ ] Kill confirmation on a throwaway process (CLI + GUI modal)
 
 ## AI contributors
 

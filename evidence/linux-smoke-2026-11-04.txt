@@ -1,0 +1,56 @@
+=== procpane Linux smoke 2026-11-04T03:11:03Z commit 76df778 ===
+
+## go test (CLI packages only, CGO_ENABLED=0)
+?   	github.com/zx06/procpane/internal/app	[no test files]
+?   	github.com/zx06/procpane/internal/enrich	[no test files]
+?   	github.com/zx06/procpane/internal/format	[no test files]
+?   	github.com/zx06/procpane/internal/gui	[no test files]
+ok  	github.com/zx06/procpane/internal/kill	(cached)
+ok  	github.com/zx06/procpane/internal/model	(cached)
+ok  	github.com/zx06/procpane/internal/scan	(cached)
+?   	github.com/zx06/procpane/internal/source	[no test files]
+?   	github.com/zx06/procpane/internal/source/local	[no test files]
+?   	github.com/zx06/procpane/cmd/procpane	[no test files]
+?   	github.com/zx06/procpane/cmd/procpane/cmdroot	[no test files]
+exit:0
+
+## version
+procpane 0.1.0-v1 (linux/amd64)
+
+## list (head)
+PORT    PROTO  PID    NAME        CPU   MEM
+:50052  TCP    0      ?           0.0%  ?
+:26058  TCP    2451   python3     0.0%  37.9 MB
+:26055  TCP    2706   MainThread  0.0%  83.4 MB
+:26500  TCP    0      ?           0.0%  ?
+:2375   TCP    0      ?           0.0%  ?
+:5901   TCP    2167   Xtigervnc   0.2%  73.1 MB
+:18765  TCP    15536  python3     4.7%  19.7 MB
+:26054  TCP    1553   node        0.5%  164 MB
+:26053  TCP    1553   node        0.5%  164 MB
+
+## list --json jq
+"array"
+jq parse: OK
+
+## find :18765
+PORT    PROTO  PID    NAME     CPU   MEM
+:18765  TCP    15536  python3  4.6%  19.7 MB
+
+## show pid 15536
+15536
+
+## kill 1 (must refuse)
+refusing to kill pid 1 (reserved system pid)
+exit:1
+
+## cross-compile windows
+-rwxr-xr-x 1 ubuntu ubuntu 5692928 Nov  4 03:11 bin/procpane.exe
+
+## cross-compile darwin amd64
+-rwxr-xr-x 1 ubuntu ubuntu 5803952 Nov  4 03:11 bin/procpane-darwin-amd64
+
+## cross-compile darwin arm64
+-rwxr-xr-x 1 ubuntu ubuntu 5553346 Nov  4 03:11 bin/procpane-darwin-arm64
+
+Note: `go test ./...` with CGO_ENABLED=0 fails on cmd/procpane-app (Wails requires cgo). Use scripts/test-cli.sh.

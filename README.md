@@ -28,6 +28,21 @@ CGO_ENABLED=0 go build -o bin/procpane ./cmd/procpane
 
 No cgo required for the CLI.
 
+### Cross-compile CLI (from Linux/macOS/Windows)
+
+```bash
+# Windows (verified on Linux CI agent)
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o bin/procpane.exe ./cmd/procpane
+
+# macOS CLI binaries (pure Go — cross-build from Linux works; run on Mac to verify)
+GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -o bin/procpane-darwin-arm64 ./cmd/procpane
+GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o bin/procpane-darwin-amd64 ./cmd/procpane
+```
+
+**GUI** (`cmd/procpane-app`) must be built on the target OS (Wails + webview SDK). macOS menu bar / Windows tray builds are not cross-compiled from Linux.
+
+Automated CLI smoke: `./scripts/test-cli.sh`. Full checklist: [`docs/self-test.md`](docs/self-test.md).
+
 ## CLI examples
 
 ```bash
@@ -67,6 +82,23 @@ procpane kill 12345 --yes --signal KILL
 
 Tray: **left-click** toggles window; **right-click** menu → refresh / quit. UI auto-refreshes ~2s (slower when unfocused).
 
+Headless Linux CI **does not** run the GUI (GTK4/WebKitGTK 6 not installed by design). Validate GUI on a desktop Mac or Windows machine per [`docs/self-test.md`](docs/self-test.md).
+
+## Windows self-test
+
+On a Windows 10/11 machine with Go 1.27.3:
+
+1. **CLI** (no cgo):  
+   `set CGO_ENABLED=0`  
+   `go build -o procpane.exe .\cmd\procpane`
+2. **LISTEN**: `procpane.exe list` and `procpane.exe list --json` — expect tcp rows with port/pid/name (or `?` if enrich fails).
+3. **find**: start any local listener (e.g. `python -m http.server 8765`), then `procpane.exe find :8765`.
+4. **kill safety**: `procpane.exe kill 1` must print a refusal (non-zero exit).
+5. **kill confirm**: `procpane.exe kill <pid>` on a test process must prompt unless `--yes`.
+6. **GUI** (optional): install [WebView2 Evergreen Runtime](https://developer.microsoft.com/microsoft-edge/webview2/); build `go build -o procpane-app.exe .\cmd/procpane-app`; confirm system tray icon, window list matches CLI, kill uses confirmation modal.
+
+You can also copy `bin/procpane.exe` from a Linux cross-compile (`GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build …`) and run steps 2–5 without Go on Windows.
+
 ## Permissions & kill behavior
 
 - Refuses **pid ≤ 1** and **own pid**.
@@ -79,6 +111,7 @@ Tray: **left-click** toggles window; **right-click** menu → refresh / quit. UI
 - [`AGENTS.md`](AGENTS.md) — map & commands for AI/humans
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — layers & HostSource
 - [`CONTRIBUTING.md`](CONTRIBUTING.md)
+- [`docs/self-test.md`](docs/self-test.md) — Linux/macOS/Windows checklist
 - [`docs/adr/`](docs/adr/) — decisions
 
 ## License
