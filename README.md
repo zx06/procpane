@@ -147,10 +147,14 @@ Maintainers tag semver releases on `main` (do not merge release PRs without revi
 | `procpane-windows-amd64.exe`, `procpane-windows-arm64.exe` | Static CLI |
 | `SHA256SUMS` | Checksums for CLI binaries |
 | `procpane-app-linux-amd64.tar.gz` | Tray GUI binary; needs GTK4 + WebKitGTK 6 |
-| `procpane-app-darwin-arm64.zip` | Tray GUI for Apple Silicon; **unsigned** — right-click → Open or allow in Privacy & Security |
-| `procpane-app-windows-amd64.zip` | Tray GUI; needs WebView2 runtime |
+| `procpane-app-darwin-arm64.dmg` | Tray GUI installer disk image (Apple Silicon `procpane.app`); **unsigned / not notarized** — Gatekeeper may block until you right-click → Open or allow in Privacy & Security |
+| `procpane-app-darwin-arm64.zip` | Same unsigned `.app` bundle as the DMG |
+| `procpane-windows-amd64-setup.exe` | NSIS GUI installer (unsigned); needs WebView2 runtime |
+| `procpane-app-windows-amd64.zip` | Portable tray GUI (`procpane-app.exe`); needs WebView2 |
 
-**Not shipped (v1 release stream):** Linux arm64 GUI, macOS Intel/universal `.app` bundles, dmg/msi installers. GUI builds use `go build ./cmd/procpane-app` after `./scripts/build-frontend.sh` on each target OS (Wails Wake/Taskfile is not wired in this repo yet).
+**Not shipped (v1 release stream):** Linux arm64 GUI, macOS Intel/universal builds, Windows arm64 GUI, Apple notarization, MSI. GUI builds use `go build ./cmd/procpane-app` after `./scripts/build-frontend.sh` on each target OS (Wails Wake/Taskfile is not wired in this repo yet).
+
+Packaging helpers live under `scripts/release/` (`package-macos-gui.sh`, `procpane-windows-amd64.nsi`).
 
 To exercise the workflow without publishing, run **Actions → Release → Run workflow** with **dry_run** enabled (build artifacts only).
 
