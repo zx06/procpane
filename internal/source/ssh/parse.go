@@ -16,8 +16,8 @@ var (
 	ssPlainTCP = regexp.MustCompile(`(?i)^LISTEN\s+\d+\s+\d+\s+(\S+):(\d+)\s`)
 	ssPlainUDP = regexp.MustCompile(`(?i)^UNCONN\s+\d+\s+\d+\s+(\S+):(\d+)\s`)
 
-	lsofTCPRe = regexp.MustCompile(`(?i)^(\S+)\s+\d+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+TCP\s+(\S+):(\d+)\s+\(LISTEN\)`)
-	lsofUDPRe = regexp.MustCompile(`(?i)^(\S+)\s+\d+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+UDP\s+(\S+):(\d+)\s`)
+	lsofTCPRe = regexp.MustCompile(`(?i)^(\S+)\s+(\d+)\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+TCP\s+(\S+):(\d+)\s+\(LISTEN\)`)
+	lsofUDPRe = regexp.MustCompile(`(?i)^(\S+)\s+(\d+)\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+UDP\s+(\S+):(\d+)\s`)
 
 	// PID/program may be "888/sshd" or "-" when non-root (no -p permission).
 	netstatTCPRe = regexp.MustCompile(`(?i)^tcp\s+\d+\s+\d+\s+(\S+):(\d+)\s+\S+\s+LISTEN\s+(-|\d+)(?:/(\S+))?`)
@@ -81,13 +81,15 @@ func parseSSLine(line string) (rawListen, bool) {
 }
 
 func parseLsofLine(line string) (rawListen, bool) {
-	if m := lsofTCPRe.FindStringSubmatch(line); len(m) >= 4 {
-		port := parsePort(m[3])
-		return rawListen{Port: port, Proto: model.ProtoTCP, Name: m[1]}, port > 0
+	if m := lsofTCPRe.FindStringSubmatch(line); len(m) >= 5 {
+		port := parsePort(m[4])
+		pid, _ := strconv.ParseInt(m[2], 10, 32)
+		return rawListen{Port: port, Proto: model.ProtoTCP, PID: int32(pid), Name: m[1]}, port > 0
 	}
-	if m := lsofUDPRe.FindStringSubmatch(line); len(m) >= 4 {
-		port := parsePort(m[3])
-		return rawListen{Port: port, Proto: model.ProtoUDP, Name: m[1]}, port > 0
+	if m := lsofUDPRe.FindStringSubmatch(line); len(m) >= 5 {
+		port := parsePort(m[4])
+		pid, _ := strconv.ParseInt(m[2], 10, 32)
+		return rawListen{Port: port, Proto: model.ProtoUDP, PID: int32(pid), Name: m[1]}, port > 0
 	}
 	return rawListen{}, false
 }
@@ -136,21 +138,61 @@ func parsePort(s string) uint32 {
 }
 
 func dedupeRaw(in []rawListen) []rawListen {
-	seen := make(map[string]struct{})
-	var out []rawListen
-	for _, r := range in {
-		key := fmtKey(r)
-		if _, ok := seen[key]; ok {
-			continue
+	return mergeRawPreferRicher(nil, in)
+}
+
+func listenPortKey(r rawListen) string {
+	return string(r.Proto) + ":" + strconv.FormatUint(uint64(r.Port), 10)
+}
+
+func rawListenScore(r rawListen) int {
+	score := 0
+	if r.PID > 0 {
+		score += 2
+	}
+	if r.Name != "" {
+		score += 1
+	}
+	return score
+}
+
+// mergeRawPreferRicher combines listen rows, keeping the richest row per port+proto.
+func mergeRawPreferRicher(base, extra []rawListen) []rawListen {
+	byKey := make(map[string]rawListen)
+	for _, r := range base {
+		k := listenPortKey(r)
+		if prev, ok := byKey[k]; !ok || rawListenScore(r) > rawListenScore(prev) {
+			byKey[k] = r
 		}
-		seen[key] = struct{}{}
+	}
+	for _, r := range extra {
+		k := listenPortKey(r)
+		if prev, ok := byKey[k]; !ok || rawListenScore(r) > rawListenScore(prev) {
+			byKey[k] = r
+		}
+	}
+	out := make([]rawListen, 0, len(byKey))
+	for _, r := range byKey {
 		out = append(out, r)
+	}
+	// stable sort by port for predictable tests
+	for i := 0; i < len(out); i++ {
+		for j := i + 1; j < len(out); j++ {
+			if out[j].Port < out[i].Port || (out[j].Port == out[i].Port && out[j].Proto < out[i].Proto) {
+				out[i], out[j] = out[j], out[i]
+			}
+		}
 	}
 	return out
 }
 
-func fmtKey(r rawListen) string {
-	return string(r.Proto) + ":" + strconv.FormatUint(uint64(r.Port), 10) + ":" + strconv.FormatInt(int64(r.PID), 10)
+func rawNeedsProcessInfo(raw []rawListen) bool {
+	for _, r := range raw {
+		if r.PID <= 0 && r.Name == "" {
+			return true
+		}
+	}
+	return false
 }
 
 func rawToListeners(host string, raw []rawListen) []model.Listener {

@@ -7,6 +7,15 @@
     type Listener,
     type SSHHostView,
   } from "./api";
+  import {
+    displayProcessName,
+    listenerMatchesSearch,
+    wellKnownPortHint,
+  } from "./displayListener";
+  import {
+    loadRefreshIntervalMs,
+    watchRefreshInterval,
+  } from "./refreshPoll";
 
   let hosts: SSHHostView[] = $state([]);
   let selected = $state<string | null>(null);
@@ -24,9 +33,8 @@
       const q = query.trim().toLowerCase();
       if (!q) return true;
       return (
-        String(r.port).includes(q) ||
-        r.name.toLowerCase().includes(q) ||
-        (r.host ?? "").toLowerCase().includes(q)
+        listenerMatchesSearch(q, r.port, r.name, r.pid, r.host ?? "") ||
+        (wellKnownPortHint(r.port, r.proto) ?? "").toLowerCase().includes(q)
       );
     }),
   );
@@ -73,21 +81,36 @@
     await doRefresh();
   }
 
-  const POLL_MS = 5000;
+  let pollMs = $state(30_000);
   let pollTimer: ReturnType<typeof setInterval> | undefined;
   let labelTimer: ReturnType<typeof setInterval> | undefined;
+  let unsubSettings: (() => void) | undefined;
 
-  onMount(() => {
-    void doRefresh();
+  function restartPollTimer() {
+    if (pollTimer !== undefined) {
+      clearInterval(pollTimer);
+      pollTimer = undefined;
+    }
     pollTimer = setInterval(() => {
       if (!refreshing && selected) void doRefresh();
-    }, POLL_MS);
+    }, pollMs);
+  }
+
+  onMount(async () => {
+    pollMs = await loadRefreshIntervalMs();
+    void doRefresh();
+    restartPollTimer();
     labelTimer = setInterval(() => labelTick++, 1000);
+    unsubSettings = watchRefreshInterval((ms) => {
+      pollMs = ms;
+      restartPollTimer();
+    });
   });
 
   onDestroy(() => {
     if (pollTimer) clearInterval(pollTimer);
     if (labelTimer) clearInterval(labelTimer);
+    unsubSettings?.();
   });
 </script>
 
@@ -152,11 +175,22 @@
                   <span class="badge {row.proto}">{row.proto}</span>
                 </span>
               </div>
-              <div class="name">{row.name}</div>
+              <div
+                class="name"
+                class:unknown={row.name === "?" && row.pid <= 0}
+              >
+                {displayProcessName(row.name)}
+              </div>
             </div>
             <div class="pcard-mid">
               {#if row.pid > 0}
                 <span>PID {row.pid}</span>
+              {/if}
+              {#if row.pid <= 0 && row.name === "?"}
+                {@const hint = wellKnownPortHint(row.port, row.proto)}
+                {#if hint}
+                  <span class="dim">{hint}</span>
+                {/if}
               {/if}
               <span class="dim">{row.host}</span>
             </div>

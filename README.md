@@ -108,7 +108,7 @@ SSH uses OpenSSH config + key/agent auth (**no password**). Docker uses `DOCKER_
    .\procpane-app.exe
    ```
 
-Tray: **left-click** toggles window; **right-click** menu → refresh / quit. UI auto-refreshes ~2s (slower when unfocused).
+Tray: **left-click** toggles window; **right-click** menu → refresh / quit. GUI auto-refresh defaults to **30s** (设置… → 自动刷新); local tab pauses when the window is hidden. CLI `watch` flags are separate.
 
 The popover defaults to **440×520** px (see `cmd/procpane-app/main.go`). CSS follows **system light/dark** via `prefers-color-scheme`. Branded icons live under [`assets/icons/`](assets/icons/) (macOS template PNG + app/tray assets).
 

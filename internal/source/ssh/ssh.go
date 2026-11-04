@@ -179,10 +179,46 @@ func collectRemoteWithRun(ctx context.Context, run func(string) (string, error))
 		}
 		raw := parseListenOutput(a.tool, merged.String())
 		if len(raw) > 0 {
+			if a.tool == "ss" && rawNeedsProcessInfo(raw) {
+				if sup, ok := collectToolOutput(run, "netstat"); ok {
+					raw = mergeRawPreferRicher(raw, sup)
+				}
+			}
 			return raw, a.tool, nil
 		}
 	}
 	return nil, "", fmt.Errorf("remote listen scan failed (ss/lsof/netstat)")
+}
+
+func collectToolOutput(run func(string) (string, error), tool string) ([]rawListen, bool) {
+	for _, a := range remoteListenAttempts() {
+		if a.tool != tool {
+			continue
+		}
+		var merged strings.Builder
+		gotOut := false
+		for _, cmd := range a.cmds {
+			out, err := run(cmd)
+			if err != nil {
+				continue
+			}
+			out = strings.TrimSpace(out)
+			if out == "" {
+				continue
+			}
+			if gotOut {
+				merged.WriteByte('\n')
+			}
+			merged.WriteString(out)
+			gotOut = true
+		}
+		if !gotOut {
+			return nil, false
+		}
+		raw := parseListenOutput(tool, merged.String())
+		return raw, len(raw) > 0
+	}
+	return nil, false
 }
 
 // remoteEmptyOutputAttempts is initial run plus retries when Session.Run exits 0

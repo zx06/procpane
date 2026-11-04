@@ -53,9 +53,10 @@ type DockerStatus struct {
 
 // SettingsView backs the independent settings window.
 type SettingsView struct {
-	StatePath string         `json:"statePath"`
-	Docker    DockerStatus   `json:"docker"`
-	SSHHosts  []SSHHostView  `json:"sshHosts"`
+	StatePath          string         `json:"statePath"`
+	RefreshIntervalSec int            `json:"refreshIntervalSec"`
+	Docker             DockerStatus   `json:"docker"`
+	SSHHosts           []SSHHostView  `json:"sshHosts"`
 }
 
 // NewService returns a Wails-bindable service.
@@ -170,10 +171,12 @@ func (p *ProcpaneService) GetSettings() (SettingsView, error) {
 			Enabled:  st.SSH.Enabled[h.Alias],
 		})
 	}
+	refreshSec, _ := p.store.RefreshIntervalSec()
 	return SettingsView{
-		StatePath: p.store.Path(),
-		Docker:    p.dockerStatusLocked(),
-		SSHHosts:  hostViews,
+		StatePath:          p.store.Path(),
+		RefreshIntervalSec: refreshSec,
+		Docker:             p.dockerStatusLocked(),
+		SSHHosts:           hostViews,
 	}, nil
 }
 
@@ -217,6 +220,13 @@ func (p *ProcpaneService) SetSSHEnabled(alias string, enabled bool) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.store.SetSSHEnabled(alias, enabled)
+}
+
+// SetRefreshIntervalSec persists the GUI auto-refresh interval for all tabs.
+func (p *ProcpaneService) SetRefreshIntervalSec(sec int) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.store.SetRefreshIntervalSec(sec)
 }
 
 // KillProcess sends TERM or KILL after backend safety checks (local only).

@@ -1,6 +1,11 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { dockerStatus, listDockerListeners, type Listener } from "./api";
+  import { displayProcessName, listenerMatchesSearch } from "./displayListener";
+  import {
+    loadRefreshIntervalMs,
+    watchRefreshInterval,
+  } from "./refreshPoll";
 
   let rows: Listener[] = $state([]);
   let query = $state("");
@@ -15,8 +20,7 @@
       const q = query.trim().toLowerCase();
       if (!q) return true;
       return (
-        String(r.port).includes(q) ||
-        r.name.toLowerCase().includes(q) ||
+        listenerMatchesSearch(q, r.port, r.name, r.pid) ||
         (r.containerName ?? "").toLowerCase().includes(q) ||
         (r.image ?? "").toLowerCase().includes(q)
       );
@@ -50,21 +54,36 @@
     }
   }
 
-  const POLL_MS = 3000;
+  let pollMs = $state(30_000);
   let pollTimer: ReturnType<typeof setInterval> | undefined;
   let labelTimer: ReturnType<typeof setInterval> | undefined;
+  let unsubSettings: (() => void) | undefined;
 
-  onMount(() => {
-    void doRefresh();
+  function restartPollTimer() {
+    if (pollTimer !== undefined) {
+      clearInterval(pollTimer);
+      pollTimer = undefined;
+    }
     pollTimer = setInterval(() => {
       if (!refreshing) void doRefresh();
-    }, POLL_MS);
+    }, pollMs);
+  }
+
+  onMount(async () => {
+    pollMs = await loadRefreshIntervalMs();
+    void doRefresh();
+    restartPollTimer();
     labelTimer = setInterval(() => labelTick++, 1000);
+    unsubSettings = watchRefreshInterval((ms) => {
+      pollMs = ms;
+      restartPollTimer();
+    });
   });
 
   onDestroy(() => {
     if (pollTimer) clearInterval(pollTimer);
     if (labelTimer) clearInterval(labelTimer);
+    unsubSettings?.();
   });
 </script>
 
@@ -118,7 +137,9 @@
                   <span class="badge {row.proto}">{row.proto}</span>
                 </span>
               </div>
-              <div class="name">{row.containerName || row.name}</div>
+              <div class="name">
+                {row.containerName || displayProcessName(row.name)}
+              </div>
             </div>
             <div class="pcard-mid docker-meta">
               <span class="dim">{row.containerId}</span>

@@ -4,8 +4,18 @@
     getSettings,
     setSSHEnabled,
     setDockerContext,
+    setRefreshIntervalSec,
+    emitSettingsChanged,
     type SettingsView,
   } from "./lib/api";
+
+  const REFRESH_OPTIONS = [
+    { sec: 15, label: "15 秒" },
+    { sec: 30, label: "30 秒" },
+    { sec: 60, label: "1 分钟" },
+    { sec: 120, label: "2 分钟" },
+    { sec: 300, label: "5 分钟" },
+  ] as const;
 
   let settings: SettingsView | null = $state(null);
   let saving = $state(false);
@@ -21,6 +31,24 @@
     try {
       await setSSHEnabled(alias, enabled);
       await load();
+      message = "已保存";
+    } catch (e) {
+      console.error(e);
+      message = "保存失败";
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function onRefreshIntervalChange(ev: Event) {
+    const sel = ev.currentTarget as HTMLSelectElement;
+    const sec = Number(sel.value);
+    saving = true;
+    message = "";
+    try {
+      await setRefreshIntervalSec(sec);
+      await load();
+      emitSettingsChanged({ refreshIntervalSec: sec });
       message = "已保存";
     } catch (e) {
       console.error(e);
@@ -58,10 +86,30 @@
 <div class="settings-app">
   <header class="settings-hd">
     <h1>procpane 设置</h1>
-    <p class="sub">Docker 上下文 · SSH 主机启用</p>
+    <p class="sub">自动刷新 · Docker 上下文 · SSH 主机</p>
   </header>
 
   {#if settings}
+    <section class="settings-block">
+      <h2>自动刷新</h2>
+      <p class="hint">本机、Docker、SSH 标签页共用此间隔；手动 ↻ 仍为立即刷新。</p>
+      <div class="readonly">
+        <div class="row">
+          <span class="k">间隔</span>
+          <select
+            class="ctx-select"
+            disabled={saving}
+            value={String(settings.refreshIntervalSec ?? 30)}
+            onchange={onRefreshIntervalChange}
+          >
+            {#each REFRESH_OPTIONS as opt (opt.sec)}
+              <option value={String(opt.sec)}>{opt.label}</option>
+            {/each}
+          </select>
+        </div>
+      </div>
+    </section>
+
     <section class="settings-block">
       <h2>Docker</h2>
       <div class="readonly">

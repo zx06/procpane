@@ -299,6 +299,11 @@ body {
   text-overflow: ellipsis;
 }
 
+.pcard-top .name.unknown {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .name .tag {
   margin-left: 5px;
   font-size: 9px;

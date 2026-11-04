@@ -132,6 +132,40 @@ func TestCollectRemoteWithRunRemoteStyleRetries(t *testing.T) {
 	}
 }
 
+func TestCollectRemoteSSSupplementsNetstat(t *testing.T) {
+	run := func(cmd string) (string, error) {
+		switch cmd {
+		case "ss -H -ltnp 2>/dev/null":
+			return "LISTEN 0 128 *:22 *:* users:((\"sshd\",pid=1,fd=3))\n", nil
+		case "ss -H -lunp 2>/dev/null":
+			return "UNCONN 0 0 0.0.0.0:68 0.0.0.0:*\nUNCONN 0 0 0.0.0.0:111 0.0.0.0:*\n", nil
+		case "netstat -ltnp 2>/dev/null":
+			return "", nil
+		case "netstat -lunp 2>/dev/null":
+			return "udp        0      0 0.0.0.0:68              0.0.0.0:*                           2/dhclient\n", nil
+		default:
+			return "", fmt.Errorf("skip")
+		}
+	}
+	raw, tool, err := collectRemoteWithRun(context.Background(), run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tool != "ss" {
+		t.Fatalf("tool=%q", tool)
+	}
+	var port68 *rawListen
+	for i := range raw {
+		if raw[i].Port == 68 {
+			port68 = &raw[i]
+			break
+		}
+	}
+	if port68 == nil || port68.PID != 2 || port68.Name != "dhclient" {
+		t.Fatalf("port 68: %+v all=%+v", port68, raw)
+	}
+}
+
 func TestCollectRemoteMergesTCPAndUDP(t *testing.T) {
 	run := func(cmd string) (string, error) {
 		switch cmd {

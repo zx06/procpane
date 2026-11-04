@@ -79,6 +79,7 @@ export type DockerStatus = {
 
 export type SettingsView = {
   statePath: string;
+  refreshIntervalSec: number;
   docker: DockerStatus;
   sshHosts: SSHHostView[];
 };
@@ -115,6 +116,10 @@ export async function setDockerContext(name: string): Promise<void> {
   return Call.ByName(`${svc}.SetDockerContext`, name);
 }
 
+export async function setRefreshIntervalSec(sec: number): Promise<void> {
+  return Call.ByName(`${svc}.SetRefreshIntervalSec`, sec);
+}
+
 export async function openSettings(): Promise<void> {
   return Call.ByName(`${svc}.OpenSettings`);
 }
@@ -133,6 +138,20 @@ export async function version(): Promise<string> {
 
 export function onRefresh(handler: () => void): () => void {
   return Events.On("procpane:refresh", handler);
+}
+
+export type SettingsChangedPayload = {
+  refreshIntervalSec?: number;
+};
+
+export function onSettingsChanged(
+  handler: (data: SettingsChangedPayload) => void,
+): () => void {
+  return Events.On("procpane:settings-changed", handler);
+}
+
+export function emitSettingsChanged(data: SettingsChangedPayload): void {
+  Events.Emit("procpane:settings-changed", data);
 }
 
 export function quitApp(): Promise<void> {

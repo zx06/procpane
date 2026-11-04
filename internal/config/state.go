@@ -10,10 +10,24 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// DefaultRefreshIntervalSec is the GUI auto-refresh period when unset in state.yaml.
+const DefaultRefreshIntervalSec = 30
+
+const (
+	minRefreshIntervalSec = 15
+	maxRefreshIntervalSec = 300
+)
+
 // State holds lightweight procpane preferences (SSH host enable flags, Docker context).
 type State struct {
+	GUI    GUIState    `yaml:"gui,omitempty"`
 	Docker DockerState `yaml:"docker,omitempty"`
 	SSH    SSHState    `yaml:"ssh"`
+}
+
+// GUIState holds cross-tab GUI preferences.
+type GUIState struct {
+	RefreshIntervalSec int `yaml:"refreshIntervalSec,omitempty"`
 }
 
 // DockerState holds the selected Docker CLI context name (empty = DOCKER_HOST / local socket).
@@ -135,6 +149,39 @@ func (s *Store) SetDockerContext(name string) error {
 	}
 	st.Docker.Context = name
 	return s.Save(st)
+}
+
+// RefreshIntervalSec returns the persisted GUI poll interval (default 30s).
+func (s *Store) RefreshIntervalSec() (int, error) {
+	st, err := s.Load()
+	if err != nil {
+		return 0, err
+	}
+	return normalizeRefreshInterval(st.GUI.RefreshIntervalSec), nil
+}
+
+// SetRefreshIntervalSec persists the GUI poll interval (seconds).
+func (s *Store) SetRefreshIntervalSec(sec int) error {
+	sec = normalizeRefreshInterval(sec)
+	st, err := s.Load()
+	if err != nil {
+		return err
+	}
+	st.GUI.RefreshIntervalSec = sec
+	return s.Save(st)
+}
+
+func normalizeRefreshInterval(sec int) int {
+	if sec <= 0 {
+		return DefaultRefreshIntervalSec
+	}
+	if sec < minRefreshIntervalSec {
+		return minRefreshIntervalSec
+	}
+	if sec > maxRefreshIntervalSec {
+		return maxRefreshIntervalSec
+	}
+	return sec
 }
 
 // ConfigSummary is a read-only view for CLI/GUI.

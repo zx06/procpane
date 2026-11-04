@@ -14,6 +14,11 @@
     listenersToProcessCards,
     type ProcessCard,
   } from "./processCards";
+  import { displayProcessName } from "./displayListener";
+  import {
+    loadRefreshIntervalMs,
+    watchRefreshInterval,
+  } from "./refreshPoll";
 
   let rows: Listener[] = $state([]);
   let selectedId: string | null = $state(null);
@@ -157,19 +162,27 @@
     else if (killOpen) killOpen = false;
   }
 
-  const POLL_MS = 2000;
   const LABEL_TICK_MS = 1000;
 
+  let pollMs = $state(30_000);
   let pollTimer: ReturnType<typeof setInterval> | undefined;
   let labelTimer: ReturnType<typeof setInterval> | undefined;
   let unsubRefresh: (() => void) | undefined;
+  let unsubSettings: (() => void) | undefined;
 
   function startAutoRefresh() {
     if (pollTimer !== undefined) return;
     void doRefresh();
     pollTimer = setInterval(() => {
       if (!refreshing) void doRefresh();
-    }, POLL_MS);
+    }, pollMs);
+  }
+
+  function restartAutoRefreshPoll() {
+    stopAutoRefresh();
+    if (!document.hidden) {
+      startAutoRefresh();
+    }
   }
 
   function stopAutoRefresh() {
@@ -203,8 +216,13 @@
     }
   }
 
-  onMount(() => {
+  onMount(async () => {
+    pollMs = await loadRefreshIntervalMs();
     unsubRefresh = onRefresh(() => void doRefresh());
+    unsubSettings = watchRefreshInterval((ms) => {
+      pollMs = ms;
+      restartAutoRefreshPoll();
+    });
     document.addEventListener("visibilitychange", onPanelVisibilityChange);
     window.addEventListener("keydown", onWindowKeydown);
     if (!document.hidden) {
@@ -218,6 +236,7 @@
     stopLabelTimer();
     document.removeEventListener("visibilitychange", onPanelVisibilityChange);
     unsubRefresh?.();
+    unsubSettings?.();
     window.removeEventListener("keydown", onWindowKeydown);
   });
 </script>
@@ -307,7 +326,7 @@
                 {/each}
               </div>
               <div class="name">
-                {card.name}
+                {displayProcessName(card.name)}
                 {#if card.leftover}
                   <span class="tag">leftover</span>
                 {/if}
