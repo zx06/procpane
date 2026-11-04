@@ -41,7 +41,7 @@ GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o bin/procpane-darwin-amd64 ./c
 
 **GUI** (`cmd/procpane-app`) must be built on the target OS (Wails + webview SDK). macOS menu bar / Windows tray builds are not cross-compiled from Linux.
 
-Automated CLI smoke: `./scripts/test-cli.sh`. Full checklist: [`docs/self-test.md`](docs/self-test.md).
+Automated CLI smoke: `./scripts/test-cli.sh`.
 
 ## CLI examples
 
@@ -82,7 +82,7 @@ procpane kill 12345 --yes --signal KILL
 
 Tray: **left-click** toggles window; **right-click** menu → refresh / quit. UI auto-refreshes ~2s (slower when unfocused).
 
-Headless Linux CI **does not** run the GUI (GTK4/WebKitGTK 6 not installed by design). Validate GUI on a desktop Mac or Windows machine per [`docs/self-test.md`](docs/self-test.md).
+Headless Linux CI **does not** run the GUI (GTK4/WebKitGTK 6 not installed by design). Validate GUI on a desktop Mac or Windows machine (see Windows self-test below).
 
 ## Windows self-test
 
@@ -111,7 +111,6 @@ You can also copy `bin/procpane.exe` from a Linux cross-compile (`GOOS=windows G
 - [`AGENTS.md`](AGENTS.md) — map & commands for AI/humans
 - [`ARCHITECTURE.md`](ARCHITECTURE.md) — layers & HostSource
 - [`CONTRIBUTING.md`](CONTRIBUTING.md)
-- [`docs/self-test.md`](docs/self-test.md) — Linux/macOS/Windows checklist
 - [`docs/adr/`](docs/adr/) — decisions
 
 ## License
