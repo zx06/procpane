@@ -30,9 +30,14 @@ test.describe("procpane UI (server build)", () => {
 
     const count = await cards.count();
     if (count > 0) {
-      await expect(cards.first().locator(".port")).toBeVisible();
-      await expect(cards.first().locator(".badge")).toBeVisible();
-      await expect(cards.first().getByText(/^PID \d+/)).toBeVisible();
+      const firstCard = cards.first();
+      const ports = firstCard.locator(".pcard-ports .port");
+      const badges = firstCard.locator(".pcard-ports .badge");
+      expect(await ports.count()).toBeGreaterThanOrEqual(1);
+      expect(await badges.count()).toBeGreaterThanOrEqual(1);
+      await expect(ports.first()).toBeVisible();
+      await expect(badges.first()).toBeVisible();
+      await expect(firstCard.getByText(/^PID \d+/)).toBeVisible();
     } else {
       await expect(empty).toBeVisible();
     }

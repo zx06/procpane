@@ -7,6 +7,12 @@
     quitApp,
     type Listener,
   } from "./lib/api";
+  import {
+    filterListenersBySearch,
+    formatPortsSnippet,
+    listenersToProcessCards,
+    type ProcessCard,
+  } from "./lib/processCards";
 
   let rows: Listener[] = $state([]);
   let selectedId: string | null = $state(null);
@@ -20,19 +26,12 @@
   let toastVisible = $state(false);
   let focused = $state(true);
 
-  const selected = $derived(rows.find((r) => r.id === selectedId) ?? null);
+  const processCards = $derived(
+    listenersToProcessCards(filterListenersBySearch(rows, query)),
+  );
 
-  const filtered = $derived(
-    rows.filter((r) => {
-      if (protoFilter !== "all" && r.proto !== protoFilter) return false;
-      const q = query.trim().toLowerCase();
-      if (!q) return true;
-      return (
-        String(r.port).includes(q) ||
-        r.name.toLowerCase().includes(q) ||
-        String(r.pid).includes(q)
-      );
-    }),
+  const selected = $derived(
+    processCards.find((c) => c.id === selectedId) ?? null,
   );
 
   function fmtMem(mb: number) {
@@ -62,7 +61,10 @@
     try {
       rows = await listListeners(protoFilter === "all" ? "all" : protoFilter);
       lastRefresh = Date.now();
-      if (selectedId && !rows.find((r) => r.id === selectedId)) {
+      if (
+        selectedId &&
+        !listenersToProcessCards(rows).some((c) => c.id === selectedId)
+      ) {
         selectedId = null;
       }
     } catch (e) {
@@ -107,9 +109,9 @@
     }
   }
 
-  function openKill(e: MouseEvent, r: Listener) {
+  function openKill(e: MouseEvent, card: ProcessCard) {
     e.stopPropagation();
-    selectedId = r.id;
+    selectedId = card.id;
     killOpen = true;
   }
 
@@ -166,7 +168,7 @@
       <h1>procpane</h1>
       <div class="sub">本地 LISTEN 端口</div>
     </div>
-    <span class="count-pill">{filtered.length}</span>
+    <span class="count-pill">{processCards.length}</span>
   </header>
 
   <div class="tools">
@@ -223,40 +225,54 @@
   </div>
 
   <div class="cards-scroll">
-    {#if filtered.length === 0}
+    {#if processCards.length === 0}
       <div class="empty">没有匹配的 LISTEN 端口</div>
     {:else}
       <div class="cards">
-        {#each filtered as r (r.id)}
+        {#each processCards as card (card.id)}
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div
             class="pcard"
-            class:on={r.id === selectedId}
-            onclick={() => toggleCard(r.id)}
+            class:on={card.id === selectedId}
+            onclick={() => toggleCard(card.id)}
           >
             <div class="pcard-top">
-              <div class="port">:{r.port}</div>
+              <div class="pcard-ports">
+                {#each card.ports as p (p.port + p.proto)}
+                  <span class="port-chip">
+                    <span class="port">:{p.port}</span>
+                    <span class="badge {p.proto}">{p.proto}</span>
+                  </span>
+                {/each}
+              </div>
               <div class="name">
-                {r.name}
-                {#if r.leftover}
+                {card.name}
+                {#if card.leftover}
                   <span class="tag">leftover</span>
                 {/if}
               </div>
-              <span class="badge {r.proto}">{r.proto}</span>
             </div>
             <div class="pcard-mid">
-              <span>PID {r.pid}</span>
-              <div class="bar" class:hot={cpuClass(r.cpuPercent) === "hot"}>
-                <i style="width: {cpuBarWidth(r.cpuPercent)}%"></i>
+              <span>PID {card.pid}</span>
+              <div class="bar" class:hot={cpuClass(card.cpuPercent) === "hot"}>
+                <i style="width: {cpuBarWidth(card.cpuPercent)}%"></i>
               </div>
               <span>
-                <span class={cpuClass(r.cpuPercent)}>{r.cpuPercent.toFixed(1)}%</span>
-                · {fmtMem(r.memMb)}
+                <span class={cpuClass(card.cpuPercent)}>{card.cpuPercent.toFixed(1)}%</span>
+                · {fmtMem(card.memMb)}
               </span>
             </div>
-            {#if r.id === selectedId}
+            {#if card.id === selectedId}
               <div class="pcard-detail">
+                <div class="ports-detail">
+                  {#each card.ports as p (p.port + p.proto)}
+                    <span class="port-chip">
+                      <span class="port">:{p.port}</span>
+                      <span class="badge {p.proto}">{p.proto}</span>
+                    </span>
+                  {/each}
+                </div>
                 <div class="kv">
                   <div class="r">
                     <div class="k">cmdline</div>
@@ -265,9 +281,9 @@
                     <div
                       class="v copyable"
                       title="点击复制"
-                      onclick={(e) => copyValue(e, "cmdline", r.cmdline)}
+                      onclick={(e) => copyValue(e, "cmdline", card.cmdline)}
                     >
-                      {r.cmdline}
+                      {card.cmdline}
                     </div>
                   </div>
                   <div class="r">
@@ -276,11 +292,11 @@
                     <!-- svelte-ignore a11y_no_static_element_interactions -->
                     <div
                       class="v copyable"
-                      class:q={r.cwd === "?"}
+                      class:q={card.cwd === "?"}
                       title="点击复制"
-                      onclick={(e) => copyValue(e, "cwd", r.cwd)}
+                      onclick={(e) => copyValue(e, "cwd", card.cwd)}
                     >
-                      {r.cwd}
+                      {card.cwd}
                     </div>
                   </div>
                   <div class="r">
@@ -291,15 +307,19 @@
                       class="v copyable"
                       title="点击复制"
                       onclick={(e) =>
-                        copyValue(e, "user", `${r.user} · ${r.started}`)}
+                        copyValue(
+                          e,
+                          "user",
+                          `${card.user} · ${card.started}`,
+                        )}
                     >
-                      {r.user} · {r.started}
+                      {card.user} · {card.started}
                     </div>
                   </div>
                 </div>
-                {#if r.chain.length > 0}
+                {#if card.chain.length > 0}
                   <div class="chain">
-                    {#each r.chain as node, i}
+                    {#each card.chain as node, i}
                       {#if i > 0}
                         <span class="arrow">›</span>
                       {/if}
@@ -308,7 +328,11 @@
                   </div>
                 {/if}
                 <div class="acts">
-                  <button type="button" class="btn danger" onclick={(e) => openKill(e, r)}>
+                  <button
+                    type="button"
+                    class="btn danger"
+                    onclick={(e) => openKill(e, card)}
+                  >
                     结束进程
                   </button>
                 </div>
@@ -337,7 +361,7 @@
       <h3>结束进程？</h3>
       <p>向目标发送 SIGTERM，结束后列表会刷新。</p>
       <div class="snippet">
-        PID {selected.pid} {selected.name} · :{selected.port}/{selected.proto}
+        PID {selected.pid} {selected.name} · {formatPortsSnippet(selected.ports)}
       </div>
       <div class="rowbtns">
         <button type="button" class="btn" onclick={() => (killOpen = false)}>取消</button>
