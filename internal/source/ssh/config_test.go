@@ -40,7 +40,9 @@ func TestReadMergedConfigHome(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(sshDir, "config"), []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	// UserHomeDir uses HOME on Unix and USERPROFILE on Windows.
 	t.Setenv("HOME", dir)
+	t.Setenv("USERPROFILE", dir)
 	merged, err := readMergedConfig()
 	if err != nil {
 		t.Fatal(err)
