@@ -1,4 +1,4 @@
-import { Call, Events } from "@wailsio/runtime";
+import { Application, Call, Events } from "@wailsio/runtime";
 
 const svc = "github.com/zx06/procpane/internal/gui.ProcpaneService";
 
@@ -47,4 +47,8 @@ export async function version(): Promise<string> {
 
 export function onRefresh(handler: () => void): () => void {
   return Events.On("procpane:refresh", handler);
+}
+
+export function quitApp(): Promise<void> {
+  return Application.Quit();
 }
