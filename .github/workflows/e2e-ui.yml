@@ -8,6 +8,9 @@ on:
 jobs:
   playwright:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     defaults:
       run:
         working-directory: frontend
@@ -69,3 +72,20 @@ jobs:
           name: playwright-test-results
           path: frontend/test-results/
           retention-days: 14
+
+      - name: Setup GitHub CLI (PR screenshot attachments)
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: cli/setup-gh@v2
+        with:
+          version: 2.99.0
+
+      - name: Post E2E screenshots on pull request
+        if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+        run: bash scripts/post-e2e-screenshots-comment.sh

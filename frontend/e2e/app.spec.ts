@@ -33,6 +33,12 @@ test.describe("procpane UI (server build)", () => {
       await expect(cards.first().locator(".port")).toBeVisible();
       await expect(cards.first().locator(".badge")).toBeVisible();
       await expect(cards.first().getByText(/^PID \d+/)).toBeVisible();
+      await cards.first().click();
+      await expect(cards.first().locator(".pcard-detail")).toBeVisible();
+      await page.screenshot({
+        path: "test-results/procpane-expanded.png",
+        fullPage: true,
+      });
     } else {
       await expect(empty).toBeVisible();
     }
