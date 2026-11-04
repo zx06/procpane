@@ -12,7 +12,7 @@ Remote LISTEN via SSH without a persistent agent on the host.
 
 **B-go**: connect with `golang.org/x/crypto/ssh`, resolve hosts via OpenSSH config (`github.com/kevinburke/ssh_config` + `~/.ssh/config`).
 
-Remote collection fallback: **`ss` → `lsof` → `netstat`**. Process fields enriched best-effort (`ps`, `/proc/pid/cmdline`).
+Remote collection fallback: **`ss` → `lsof` → `netstat`**. TCP and UDP are queried with **separate** remote shell commands per tool (not `;`-chained in one session): BusyBox `netstat` on some NAS images (QNAP) returns empty stdout for compound commands while single `netstat -ltnp` works. Process fields enriched best-effort (`ps`, `/proc/pid/cmdline`).
 
 Auth: **SSH agent and key files only** — **no password prompts**.
 

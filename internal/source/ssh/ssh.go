@@ -117,22 +117,52 @@ func loadPrivateKey(path string) (gossh.Signer, error) {
 	return gossh.ParsePrivateKey(b)
 }
 
+// listenScanAttempt is one tool in the ss → lsof → netstat fallback chain.
+// TCP and UDP are separate remote commands: BusyBox netstat (e.g. QNAP) often
+// returns empty stdout when both are chained with ";" in a single Session.Run.
+type listenScanAttempt struct {
+	tool string
+	cmds []string
+}
+
+func remoteListenAttempts() []listenScanAttempt {
+	return []listenScanAttempt{
+		{"ss", []string{"ss -H -ltnp 2>/dev/null", "ss -H -lunp 2>/dev/null"}},
+		{"lsof", []string{"lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null", "lsof -nP -iUDP 2>/dev/null"}},
+		{"netstat", []string{"netstat -ltnp 2>/dev/null", "netstat -lunp 2>/dev/null"}},
+	}
+}
+
 func collectRemote(ctx context.Context, client *gossh.Client) ([]rawListen, string, error) {
-	type attempt struct {
-		tool string
-		cmd  string
-	}
-	attempts := []attempt{
-		{"ss", "ss -H -ltnp 2>/dev/null; ss -H -lunp 2>/dev/null"},
-		{"lsof", "lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null; lsof -nP -iUDP 2>/dev/null"},
-		{"netstat", "netstat -ltnp 2>/dev/null; netstat -lunp 2>/dev/null"},
-	}
-	for _, a := range attempts {
-		out, err := runRemote(ctx, client, a.cmd)
-		if err != nil {
+	return collectRemoteWithRun(ctx, func(cmd string) (string, error) {
+		return runRemote(ctx, client, cmd)
+	})
+}
+
+func collectRemoteWithRun(ctx context.Context, run func(string) (string, error)) ([]rawListen, string, error) {
+	_ = ctx
+	for _, a := range remoteListenAttempts() {
+		var merged strings.Builder
+		gotOut := false
+		for _, cmd := range a.cmds {
+			out, err := run(cmd)
+			if err != nil {
+				continue
+			}
+			out = strings.TrimSpace(out)
+			if out == "" {
+				continue
+			}
+			if gotOut {
+				merged.WriteByte('\n')
+			}
+			merged.WriteString(out)
+			gotOut = true
+		}
+		if !gotOut {
 			continue
 		}
-		raw := parseListenOutput(a.tool, out)
+		raw := parseListenOutput(a.tool, merged.String())
 		if len(raw) > 0 {
 			return raw, a.tool, nil
 		}
