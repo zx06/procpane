@@ -114,6 +114,13 @@ func expandHome(p string) string {
 		}
 		return filepath.Join(home, p[2:])
 	}
+	if p == "~" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return p
+		}
+		return home
+	}
 	return p
 }
 

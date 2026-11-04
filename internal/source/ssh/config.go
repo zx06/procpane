@@ -1,10 +1,13 @@
 package ssh
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kevinburke/ssh_config"
@@ -120,6 +123,7 @@ func stripInlineComment(s string) string {
 }
 
 func resolveIncludePath(tok, baseDir string, system bool) string {
+	tok = expandHome(tok)
 	if filepath.IsAbs(tok) {
 		return tok
 	}
@@ -153,10 +157,101 @@ func ResolveHost(alias string) (HostEntry, error) {
 	return ResolveHostEntry(alias), nil
 }
 
+var userSettingsCache struct {
+	mu       sync.Mutex
+	srcMod   time.Time
+	srcSize  int64
+	srcPath  string
+	normPath string
+	settings *ssh_config.UserSettings
+}
+
+// userSettingsForDefaultConfig returns UserSettings that read ~/.ssh/config with
+// tilde-prefixed Include paths rewritten to absolute paths (kevinburke joins
+// relative paths under ~/.ssh and would double-prefix ~ otherwise).
+func userSettingsForDefaultConfig() *ssh_config.UserSettings {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ssh_config.DefaultUserSettings
+	}
+	src := filepath.Join(home, ".ssh", "config")
+	st, err := os.Stat(src)
+	if err != nil {
+		return ssh_config.DefaultUserSettings
+	}
+
+	userSettingsCache.mu.Lock()
+	defer userSettingsCache.mu.Unlock()
+
+	if userSettingsCache.settings != nil &&
+		userSettingsCache.srcPath == src &&
+		userSettingsCache.srcMod.Equal(st.ModTime()) &&
+		userSettingsCache.srcSize == st.Size() {
+		if _, err := os.Stat(userSettingsCache.normPath); err == nil {
+			return userSettingsCache.settings
+		}
+	}
+
+	raw, err := os.ReadFile(src)
+	if err != nil {
+		return ssh_config.DefaultUserSettings
+	}
+	normText := rewriteTildeIncludeDirectives(string(raw))
+	sum := sha256.Sum256([]byte(normText))
+	normPath := filepath.Join(os.TempDir(), "procpane-ssh-config-"+hex.EncodeToString(sum[:16])+".conf")
+	if err := os.WriteFile(normPath, []byte(normText), 0o600); err != nil {
+		return ssh_config.DefaultUserSettings
+	}
+
+	us := &ssh_config.UserSettings{}
+	norm := normPath
+	us.ConfigFinder(func() string { return norm })
+
+	userSettingsCache.srcPath = src
+	userSettingsCache.srcMod = st.ModTime()
+	userSettingsCache.srcSize = st.Size()
+	userSettingsCache.normPath = normPath
+	userSettingsCache.settings = us
+	return us
+}
+
+func rewriteTildeIncludeDirectives(text string) string {
+	var out strings.Builder
+	for _, line := range strings.Split(text, "\n") {
+		out.WriteString(rewriteIncludeLineTildes(line))
+		out.WriteByte('\n')
+	}
+	return out.String()
+}
+
+func rewriteIncludeLineTildes(line string) string {
+	loc := includeLineRe.FindStringSubmatchIndex(line)
+	if loc == nil {
+		return line
+	}
+	valStart, valEnd := loc[2], loc[3]
+	rawVal := line[valStart:valEnd]
+	commentSuffix := ""
+	if i := strings.IndexByte(rawVal, '#'); i >= 0 {
+		commentSuffix = rawVal[i:]
+		rawVal = strings.TrimSpace(rawVal[:i])
+	} else {
+		rawVal = strings.TrimSpace(rawVal)
+	}
+	fields := strings.Fields(rawVal)
+	for i, tok := range fields {
+		expanded := expandHome(tok)
+		if expanded != tok && filepath.IsAbs(expanded) {
+			fields[i] = expanded
+		}
+	}
+	return line[:valStart] + strings.Join(fields, " ") + commentSuffix
+}
+
 // ResolveHostEntry resolves OpenSSH keywords for alias via kevinburke/ssh_config
 // (including Include files on Get/GetAll).
 func ResolveHostEntry(alias string) HostEntry {
-	return resolveHostEntryWith(alias, ssh_config.DefaultUserSettings)
+	return resolveHostEntryWith(alias, userSettingsForDefaultConfig())
 }
 
 func resolveHostEntryWith(alias string, us *ssh_config.UserSettings) HostEntry {
