@@ -33,18 +33,25 @@ test.describe("procpane UI (server build)", () => {
       await expect(cards.first().locator(".port")).toBeVisible();
       await expect(cards.first().locator(".badge")).toBeVisible();
       await expect(cards.first().getByText(/^PID \d+/)).toBeVisible();
-      const first = cards.first();
-      await first.scrollIntoViewIfNeeded();
-      await first.evaluate((el) => (el as HTMLElement).click());
-      await expect(first).toHaveClass(/\bon\b/, { timeout: 10_000 });
-      await expect(first.locator(".pcard-detail")).toBeVisible();
-      await page.screenshot({
-        path: "test-results/procpane-expanded.png",
-        fullPage: true,
-      });
     } else {
       await expect(empty).toBeVisible();
     }
+  });
+
+  test("screenshots: expanded listener card for PR comment", async ({ page }) => {
+    await page.goto("/");
+
+    const appCard = page.locator(".pcard").filter({ hasText: "procpane-app" });
+    await expect(appCard).toBeVisible({ timeout: 30_000 });
+
+    await appCard.scrollIntoViewIfNeeded();
+    await appCard.locator(".pcard-top").click({ force: true });
+    await expect(appCard.locator(".pcard-detail")).toBeVisible({ timeout: 10_000 });
+
+    await page.screenshot({
+      path: "test-results/procpane-expanded.png",
+      fullPage: true,
+    });
   });
 
   test("interaction: proto chips toggle without error", async ({ page }) => {

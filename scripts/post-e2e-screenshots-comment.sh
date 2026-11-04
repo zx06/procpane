@@ -11,7 +11,7 @@ if [[ -z "${PR_NUMBER:-}" ]]; then
   exit 0
 fi
 
-if ! gh pr comment --help 2>&1 | grep -q -- '--attach'; then
+if ! gh pr comment --help 2>&1 | grep -qE '\-\-attach'; then
   echo "gh with --attach support is required (>= 2.99); found: $(gh --version | head -1)"
   exit 1
 fi
