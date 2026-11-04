@@ -234,17 +234,6 @@
 
 <div class="app">
   <header class="pop-hd">
-    <div class="mark" aria-hidden="true">
-      <svg viewBox="0 0 18 18" fill="none">
-        <rect x="2.5" y="2.5" width="13" height="13" rx="3" stroke="currentColor" stroke-width="1.5" />
-        <path
-          d="M5.5 6.5h7M5.5 9h7M5.5 11.5h7"
-          stroke="currentColor"
-          stroke-width="1.4"
-          stroke-linecap="round"
-        />
-      </svg>
-    </div>
     <div class="hd-text">
       <h1>procpane</h1>
       <div class="sub">本地 LISTEN 端口</div>
