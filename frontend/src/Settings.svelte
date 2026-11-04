@@ -47,9 +47,7 @@
   }
 
   function contextLabel(c: SettingsView["docker"]["contexts"][number]) {
-    const mark = c.current ? " *" : "";
-    const host = c.host ? ` · ${c.host}` : "";
-    return `${c.name}${mark}${host}`;
+    return c.current ? `${c.name} *` : c.name;
   }
 
   onMount(() => {
@@ -138,13 +136,19 @@
 <style>
   .ctx-select {
     flex: 1;
+    min-width: 0;
     max-width: 100%;
     font-family: inherit;
-    font-size: 0.85rem;
-    padding: 0.35rem 0.5rem;
+    font-size: 12px;
+    padding: 4px 8px;
     border-radius: 6px;
-    border: 1px solid var(--border, #333);
-    background: var(--surface, #1a1a1a);
-    color: inherit;
+    border: 1px solid var(--hair);
+    background: var(--pop-elev);
+    color: var(--text);
+  }
+
+  .ctx-select:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
   }
 </style>
