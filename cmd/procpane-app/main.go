@@ -45,16 +45,17 @@ func main() {
 		Height:           windowHeight,
 		Name:             "main",
 		URL:              "/",
-		Hidden:           false,
+		Hidden:           true,
+		Frameless:        true,
+		AlwaysOnTop:      true,
 		HideOnEscape:     true,
-		HideOnFocusLost:  false,
+		HideOnFocusLost:  true,
 		BackgroundColour: application.NewRGB(242, 244, 248),
 		Mac: application.MacWindow{
-			TitleBar:   application.MacTitleBarHiddenInset,
 			Appearance: application.DefaultAppearance,
 		},
 		Windows: application.WindowsWindow{
-			HiddenOnTaskbar: false,
+			HiddenOnTaskbar: true,
 			Theme:           application.SystemDefault,
 		},
 	})
