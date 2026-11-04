@@ -237,6 +237,153 @@ export class Listener {
 }
 
 /**
+ * PortRef is a listening port owned by a process.
+ */
+export class PortRef {
+    /**
+     * Creates a new PortRef instance.
+     * @param {Partial<PortRef>} [$$source = {}] - The source object to create the PortRef.
+     */
+    constructor($$source = {}) {
+        if (!("port" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["port"] = 0;
+        }
+        if (!("proto" in $$source)) {
+            /**
+             * @member
+             * @type {Protocol}
+             */
+            this["proto"] = Protocol.$zero;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new PortRef instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {PortRef}
+     */
+    static createFrom($$source = {}) {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new PortRef(/** @type {Partial<PortRef>} */($$parsedSource));
+    }
+}
+
+/**
+ * ProcessInfo is detailed metadata for a PID (show / enrich).
+ */
+export class ProcessInfo {
+    /**
+     * Creates a new ProcessInfo instance.
+     * @param {Partial<ProcessInfo>} [$$source = {}] - The source object to create the ProcessInfo.
+     */
+    constructor($$source = {}) {
+        if (!("pid" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["pid"] = 0;
+        }
+        if (!("name" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["name"] = "";
+        }
+        if (!("cmdline" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["cmdline"] = "";
+        }
+        if (!("cwd" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["cwd"] = "";
+        }
+        if (!("user" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["user"] = "";
+        }
+        if (!("started" in $$source)) {
+            /**
+             * @member
+             * @type {string}
+             */
+            this["started"] = "";
+        }
+        if (!("cpuPercent" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["cpuPercent"] = 0;
+        }
+        if (!("memBytes" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["memBytes"] = 0;
+        }
+        if (!("memMb" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["memMb"] = 0;
+        }
+        if (!("chain" in $$source)) {
+            /**
+             * @member
+             * @type {ChainNode[]}
+             */
+            this["chain"] = [];
+        }
+        if (/** @type {any} */(false)) {
+            /**
+             * @member
+             * @type {PortRef[] | undefined}
+             */
+            this["ports"] = undefined;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ProcessInfo instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {ProcessInfo}
+     */
+    static createFrom($$source = {}) {
+        const $$createField9_0 = $$createType1;
+        const $$createField10_0 = $$createType3;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("chain" in $$parsedSource) {
+            $$parsedSource["chain"] = $$createField9_0($$parsedSource["chain"]);
+        }
+        if ("ports" in $$parsedSource) {
+            $$parsedSource["ports"] = $$createField10_0($$parsedSource["ports"]);
+        }
+        return new ProcessInfo(/** @type {Partial<ProcessInfo>} */($$parsedSource));
+    }
+}
+
+/**
  * Protocol is tcp or udp.
  * @readonly
  * @enum {string}
@@ -254,3 +401,5 @@ export const Protocol = {
 // Private type creation functions
 const $$createType0 = ChainNode.createFrom;
 const $$createType1 = $Create.Array($$createType0);
+const $$createType2 = PortRef.createFrom;
+const $$createType3 = $Create.Array($$createType2);

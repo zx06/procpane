@@ -3,9 +3,11 @@
   import {
     listListeners,
     killProcess,
+    showProcess,
     onRefresh,
     quitApp,
     type Listener,
+    type ProcessInfo,
   } from "./lib/api";
   import {
     filterListenersBySearch,
@@ -21,6 +23,10 @@
   let lastRefresh = $state(Date.now());
   let refreshing = $state(false);
   let killOpen = $state(false);
+  let procDetailOpen = $state(false);
+  let procDetailLoading = $state(false);
+  let procDetail: ProcessInfo | null = $state(null);
+  let procDetailNote = $state("");
   let toast = $state("");
   let toastVisible = $state(false);
   /** Bumps every ~1s while the panel is visible so the freshness label updates. */
@@ -114,6 +120,44 @@
     killOpen = true;
   }
 
+  function chainNodeNote(info: ProcessInfo, fallback: string) {
+    if (fallback) return fallback;
+    return info.chain.find((n) => n.pid === info.pid)?.note ?? "";
+  }
+
+  function closeProcDetail() {
+    procDetailOpen = false;
+    procDetail = null;
+    procDetailNote = "";
+  }
+
+  async function openProcessDetail(
+    e: MouseEvent,
+    pid: number,
+    note = "",
+  ) {
+    e.stopPropagation();
+    procDetailOpen = true;
+    procDetailLoading = true;
+    procDetail = null;
+    procDetailNote = note;
+    try {
+      procDetail = await showProcess(pid);
+    } catch (err) {
+      console.error(err);
+      showToast("失败");
+      closeProcDetail();
+    } finally {
+      procDetailLoading = false;
+    }
+  }
+
+  function onWindowKeydown(e: KeyboardEvent) {
+    if (e.key !== "Escape") return;
+    if (procDetailOpen) closeProcDetail();
+    else if (killOpen) killOpen = false;
+  }
+
   async function handleQuit() {
     try {
       await quitApp();
@@ -172,6 +216,7 @@
   onMount(() => {
     unsubRefresh = onRefresh(() => void doRefresh());
     document.addEventListener("visibilitychange", onPanelVisibilityChange);
+    window.addEventListener("keydown", onWindowKeydown);
     if (!document.hidden) {
       startAutoRefresh();
       startLabelTimer();
@@ -183,6 +228,7 @@
     stopLabelTimer();
     document.removeEventListener("visibilitychange", onPanelVisibilityChange);
     unsubRefresh?.();
+    window.removeEventListener("keydown", onWindowKeydown);
   });
 </script>
 
@@ -289,7 +335,17 @@
               </div>
             </div>
             <div class="pcard-mid">
-              <span>PID {card.pid}</span>
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <span
+                class="pid-link"
+                role="button"
+                tabindex="0"
+                title="查看进程详情"
+                onclick={(e) => openProcessDetail(e, card.pid)}
+              >
+                PID {card.pid}
+              </span>
               <div class="bar" class:hot={cpuClass(card.cpuPercent) === "hot"}>
                 <i style="width: {cpuBarWidth(card.cpuPercent)}%"></i>
               </div>
@@ -358,7 +414,18 @@
                       {#if i > 0}
                         <span class="arrow">›</span>
                       {/if}
-                      <span class="n">{node.name} · {node.pid}</span>
+                      <!-- svelte-ignore a11y_click_events_have_key_events -->
+                      <!-- svelte-ignore a11y_no_static_element_interactions -->
+                      <span
+                        class="n clickable"
+                        role="button"
+                        tabindex="0"
+                        title="查看进程详情"
+                        onclick={(e) =>
+                          openProcessDetail(e, node.pid, node.note)}
+                      >
+                        {node.name} · {node.pid}
+                      </span>
                     {/each}
                   </div>
                 {/if}
@@ -387,6 +454,125 @@
     <button type="button" class="quit-btn" onclick={handleQuit}>退出</button>
   </footer>
 </div>
+
+{#if procDetailOpen}
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <div class="overlay" role="presentation" onclick={closeProcDetail}>
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div
+      class="sheet sheet-detail"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="proc-detail-title"
+      tabindex="-1"
+      onclick={(e) => e.stopPropagation()}
+    >
+      {#if procDetailLoading}
+        <p class="sheet-loading">加载中…</p>
+      {:else if procDetail}
+        <h3 id="proc-detail-title">{procDetail.name}</h3>
+        <div class="detail-sub">PID {procDetail.pid}</div>
+        {#if chainNodeNote(procDetail, procDetailNote)}
+          <div class="detail-note">{chainNodeNote(procDetail, procDetailNote)}</div>
+        {/if}
+        <div class="kv">
+          <div class="r">
+            <div class="k">CPU</div>
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              class="v copyable"
+              title="点击复制"
+              onclick={(e) =>
+                copyValue(e, "CPU", `${procDetail!.cpuPercent.toFixed(1)}%`)}
+            >
+              {procDetail.cpuPercent.toFixed(1)}%
+            </div>
+          </div>
+          <div class="r">
+            <div class="k">mem</div>
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              class="v copyable"
+              title="点击复制"
+              onclick={(e) =>
+                copyValue(e, "mem", fmtMem(procDetail!.memMb))}
+            >
+              {fmtMem(procDetail.memMb)}
+            </div>
+          </div>
+          <div class="r">
+            <div class="k">cmdline</div>
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              class="v copyable"
+              title="点击复制"
+              onclick={(e) => copyValue(e, "cmdline", procDetail!.cmdline)}
+            >
+              {procDetail.cmdline}
+            </div>
+          </div>
+          <div class="r">
+            <div class="k">cwd</div>
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              class="v copyable"
+              class:q={procDetail.cwd === "?"}
+              title="点击复制"
+              onclick={(e) => copyValue(e, "cwd", procDetail!.cwd)}
+            >
+              {procDetail.cwd}
+            </div>
+          </div>
+          <div class="r">
+            <div class="k">user</div>
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              class="v copyable"
+              title="点击复制"
+              onclick={(e) =>
+                copyValue(
+                  e,
+                  "user",
+                  `${procDetail!.user} · ${procDetail!.started}`,
+                )}
+            >
+              {procDetail.user} · {procDetail.started}
+            </div>
+          </div>
+        </div>
+        {#if procDetail.chain.length > 0}
+          <div class="section-label">进程链</div>
+          <div class="chain">
+            {#each procDetail.chain as node, i}
+              {#if i > 0}
+                <span class="arrow">›</span>
+              {/if}
+              <!-- svelte-ignore a11y_click_events_have_key_events -->
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <span
+                class="n clickable"
+                role="button"
+                tabindex="0"
+                title="查看进程详情"
+                onclick={(e) => openProcessDetail(e, node.pid, node.note)}
+              >
+                {node.name} · {node.pid}
+              </span>
+            {/each}
+          </div>
+        {/if}
+        <div class="rowbtns">
+          <button type="button" class="btn" onclick={closeProcDetail}>关闭</button>
+        </div>
+      {/if}
+    </div>
+  </div>
+{/if}
 
 {#if killOpen && selected}
   <!-- svelte-ignore a11y_click_events_have_key_events -->

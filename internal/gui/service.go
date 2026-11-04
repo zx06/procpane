@@ -9,7 +9,7 @@ import (
 	"github.com/zx06/procpane/internal/model"
 )
 
-// ProcpaneService exposes list/kill to the Wails frontend.
+// ProcpaneService exposes list/kill/show to the Wails frontend.
 type ProcpaneService struct {
 	svc *app.Service
 	mu  sync.Mutex
@@ -44,6 +44,15 @@ func (p *ProcpaneService) KillProcess(pid int32, signal string) (model.KillResul
 		return res, nil
 	}
 	return res, nil
+}
+
+// ShowProcess returns enriched metadata for a PID (parent chain drill-down).
+func (p *ProcpaneService) ShowProcess(pid int32) (model.ProcessInfo, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	return p.svc.Show(ctx, pid), nil
 }
 
 // Version returns the app version string for the UI badge.

@@ -6,5 +6,7 @@ export {
     ChainNode,
     KillResult,
     Listener,
+    PortRef,
+    ProcessInfo,
     Protocol
 } from "./models.js";

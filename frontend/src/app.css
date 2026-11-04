@@ -458,6 +458,32 @@ body {
   border: 1px solid var(--hair2);
 }
 
+.chain .n.clickable {
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.chain .n.clickable:hover {
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--hair2));
+  color: var(--accent);
+}
+
+.pcard-mid .pid-link {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--muted) 55%, transparent);
+  text-underline-offset: 2px;
+}
+
+.pcard-mid .pid-link:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
 .chain .arrow {
   color: var(--faint);
   font-size: 10px;
@@ -569,6 +595,40 @@ body {
   font-size: 12px;
   color: var(--muted);
   line-height: 1.45;
+}
+
+.sheet-detail {
+  width: min(320px, calc(100% - 24px));
+  max-height: min(440px, calc(100vh - 32px));
+  overflow: auto;
+}
+
+.sheet-detail .detail-sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.sheet-detail .detail-note {
+  font-size: 10px;
+  color: var(--faint);
+  margin: -4px 0 8px;
+}
+
+.sheet-detail .section-label {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+  margin: 4px 0 6px;
+}
+
+.sheet-loading {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  padding: 12px 0;
 }
 
 .snippet {
