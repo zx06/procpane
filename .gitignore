@@ -10,3 +10,6 @@
 .idea/
 .vscode/
 *.test
+
+# Local smoke / acceptance dumps — do not commit
+evidence/
