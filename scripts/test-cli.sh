@@ -9,7 +9,12 @@ echo "== go test (internal + CLI) =="
 go test ./internal/... ./cmd/procpane/...
 
 echo "== build CLI =="
-go build -o bin/procpane ./cmd/procpane
+cli_bin=bin/procpane
+case "$(uname -s 2>/dev/null || echo)" in
+  MINGW* | MSYS* | CYGWIN*) cli_bin=bin/procpane.exe ;;
+esac
+go build -o "$cli_bin" ./cmd/procpane
+export PROCPANE_BIN="$cli_bin"
 
 echo "== native smoke =="
 go run ./scripts/smoke
