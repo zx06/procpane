@@ -8,4 +8,12 @@ export default defineConfig({
     strictPort: true,
   },
   plugins: [svelte()],
+  build: {
+    rollupOptions: {
+      input: {
+        main: "index.html",
+        settings: "settings.html",
+      },
+    },
+  },
 });

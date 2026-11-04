@@ -22,6 +22,9 @@ func init() {
 	rootCmd.AddCommand(newFindCmd())
 	rootCmd.AddCommand(newShowCmd())
 	rootCmd.AddCommand(newKillCmd())
+	rootCmd.AddCommand(newDockerCmd())
+	rootCmd.AddCommand(newSSHCmd())
+	rootCmd.AddCommand(newConfigCmd())
 	rootCmd.AddCommand(newVersionCmd())
 }
 

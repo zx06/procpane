@@ -23,6 +23,7 @@ export default defineConfig({
   webServer: {
     command: "go run -tags server,production ./cmd/procpane-app",
     cwd: "..",
+    env: { ...process.env, CGO_ENABLED: "0" },
     url: "http://127.0.0.1:8080",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

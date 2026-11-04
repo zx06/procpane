@@ -16,7 +16,7 @@
                        │
          ┌─────────────┴─────────────┐
          ▼                           ▼
-  source/local (v1)          source/docker|ssh (future)
+  source/local (v1)          source/docker|ssh (v0.2)
          │
          ├── scan.ListRawListeners
          └── enrich.EnrichListeners
@@ -38,8 +38,9 @@ Implement `ListListeners(ctx) ([]model.Listener, error)` for new hosts. CLI/GUI 
 | In scope | Out of scope |
 |----------|----------------|
 | LISTEN tcp/udp | ESTABLISHED view |
-| Local host | Docker/SSH |
-| Kill with confirm | Autostart, alerts |
+| Local host | Remote kill on docker/ssh |
+| Docker A1 + SSH B-go HostSources | hosts.yaml, LAN discovery |
+| Kill with confirm (local) | Autostart, alerts |
 
 ## Decisions
 

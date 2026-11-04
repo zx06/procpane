@@ -15,6 +15,8 @@ import (
 const (
 	windowWidth  = 440
 	windowHeight = 520
+	settingsW    = 420
+	settingsH    = 480
 )
 
 func main() {
@@ -64,8 +66,36 @@ func main() {
 		},
 	})
 
+	settingsWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:            "procpane — 设置",
+		Width:            settingsW,
+		Height:           settingsH,
+		Name:             "settings",
+		URL:              "/settings.html",
+		Hidden:           true,
+		Frameless:        false,
+		AlwaysOnTop:      false,
+		HideOnEscape:     true,
+		BackgroundColour: application.NewRGB(242, 244, 248),
+		Mac: application.MacWindow{
+			Appearance: application.DefaultAppearance,
+		},
+		Windows: application.WindowsWindow{
+			HiddenOnTaskbar: false,
+			Theme:           application.SystemDefault,
+		},
+	})
+
+	svc.BindSettingsWindow(func() {
+		settingsWindow.Show()
+	})
+
 	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		window.Hide()
+		e.Cancel()
+	})
+	settingsWindow.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		settingsWindow.Hide()
 		e.Cancel()
 	})
 
@@ -79,8 +109,11 @@ func main() {
 	}
 
 	menu := app.NewMenu()
-	menu.Add("刷新端口列表").OnClick(func(_ *application.Context) {
-		app.Event.Emit("procpane:refresh", nil)
+	menu.Add("打开面板").OnClick(func(_ *application.Context) {
+		window.Show()
+	})
+	menu.Add("设置…").OnClick(func(_ *application.Context) {
+		settingsWindow.Show()
 	})
 	menu.AddSeparator()
 	menu.Add("退出 procpane").OnClick(func(_ *application.Context) {

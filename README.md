@@ -62,12 +62,23 @@ procpane find :8080
 procpane show 12345
 procpane kill 12345          # prompts for confirmation
 procpane kill 12345 --yes --signal KILL
+
+# v0.2 — independent HostSources (see docs/adr/006-docker-a1.md, 007-ssh-b-go.md)
+procpane docker ls           # alias: docker ps
+procpane config show
+procpane config enable myhost
+procpane ssh hosts
+procpane ssh ls myhost       # only enabled aliases
 ```
 
 ### Flags
 
 - `list --proto tcp|udp|all` `--json` `-w 2s` (watch)
-- `kill --signal TERM|KILL` `--yes`
+- `docker ls --json` `-w 2s`
+- `ssh ls <host> --json` `-w 2s`
+- `kill --signal TERM|KILL` `--yes` (local only)
+
+SSH uses OpenSSH config + key/agent auth (**no password**). Docker uses `DOCKER_HOST` or the default unix socket.
 
 ## GUI (Wails + Svelte)
 
