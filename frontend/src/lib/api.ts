@@ -58,10 +58,23 @@ export type SSHHostView = {
   enabled: boolean;
 };
 
+export type DockerContextView = {
+  name: string;
+  description?: string;
+  host: string;
+  skipTLSVerify?: boolean;
+  current: boolean;
+  selected: boolean;
+  error?: string;
+};
+
 export type DockerStatus = {
   endpoint: string;
   reachable: boolean;
   error?: string;
+  selectedContext?: string;
+  currentContext?: string;
+  contexts?: DockerContextView[];
 };
 
 export type SettingsView = {
@@ -96,6 +109,10 @@ export async function getSettings(): Promise<SettingsView> {
 
 export async function setSSHEnabled(alias: string, enabled: boolean): Promise<void> {
   return Call.ByName(`${svc}.SetSSHEnabled`, alias, enabled);
+}
+
+export async function setDockerContext(name: string): Promise<void> {
+  return Call.ByName(`${svc}.SetDockerContext`, name);
 }
 
 export async function openSettings(): Promise<void> {

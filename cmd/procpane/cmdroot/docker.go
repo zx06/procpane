@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/zx06/procpane/internal/config"
 	"github.com/zx06/procpane/internal/format"
 	dockersrc "github.com/zx06/procpane/internal/source/docker"
 )
@@ -15,16 +16,28 @@ func newDockerCmd() *cobra.Command {
 		Use:   "docker",
 		Short: "Docker published ports (Engine API)",
 	}
-	cmd.AddCommand(newDockerLsCmd())
+	cmd.AddCommand(newDockerLsCmd(), newDockerContextsCmd())
 	return cmd
+}
+
+func newDockerContextsCmd() *cobra.Command {
+	return newConfigDockerContextsCmd()
 }
 
 func newDockerLsCmd() *cobra.Command {
 	var asJSON bool
 	var watch time.Duration
-	src := dockersrc.New()
 
 	run := func() error {
+		store, err := config.DefaultStore()
+		if err != nil {
+			return err
+		}
+		selected, err := store.DockerContext()
+		if err != nil {
+			return err
+		}
+		src := dockersrc.NewWithContext(selected)
 		ctx := context.Background()
 		listeners, err := src.ListListeners(ctx)
 		if err != nil {

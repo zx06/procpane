@@ -232,7 +232,7 @@ test.describe("procpane UI (server build)", () => {
 });
 
 test.describe("procpane settings (server build, /settings.html)", () => {
-  test("smoke: settings page loads Docker read-only and SSH host list", async ({
+  test("smoke: settings page loads Docker context select and SSH host list", async ({
     page,
   }) => {
     await page.goto("/settings.html");
@@ -241,6 +241,7 @@ test.describe("procpane settings (server build, /settings.html)", () => {
       timeout: 30_000,
     });
     await expect(page.getByRole("heading", { name: "Docker", exact: true })).toBeVisible();
+    await expect(page.locator("select.ctx-select")).toBeVisible();
     await expect(page.getByText("Endpoint")).toBeVisible();
     await expect(page.getByRole("heading", { name: "SSH 主机", exact: true })).toBeVisible();
     await expect(page.getByText(/~\/\.ssh\/config/)).toBeVisible();

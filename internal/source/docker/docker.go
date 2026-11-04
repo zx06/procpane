@@ -6,14 +6,15 @@ import (
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
-	"github.com/moby/moby/client"
+	"github.com/docker/docker/client"
 	"github.com/zx06/procpane/internal/model"
 	"github.com/zx06/procpane/internal/source"
 )
 
 // Source lists published container ports via Docker Engine API (A1).
 type Source struct {
-	Host string // API endpoint; empty → ResolveHost()
+	Host          string // deprecated: prefer Context; non-empty overrides host only when Context empty
+	Context       string // procpane-selected Docker context name; empty → ResolveHost()
 }
 
 var _ source.HostSource = (*Source)(nil)
@@ -23,22 +24,16 @@ func New() *Source {
 	return &Source{}
 }
 
-func (s *Source) apiHost() string {
-	if s.Host != "" {
-		return s.Host
-	}
-	return ResolveHost()
+// NewWithContext returns a Source that dials the given procpane context (empty = ResolveHost).
+func NewWithContext(contextName string) *Source {
+	return &Source{Context: contextName}
 }
 
 // ListListeners returns one row per published host port (ContainerList + Ports).
 func (s *Source) ListListeners(ctx context.Context) ([]model.Listener, error) {
-	cli, err := client.NewClientWithOpts(
-		client.FromEnv,
-		client.WithHost(s.apiHost()),
-		client.WithAPIVersionNegotiation(),
-	)
+	cli, _, err := s.client()
 	if err != nil {
-		return nil, fmt.Errorf("docker client: %w", err)
+		return nil, err
 	}
 	defer cli.Close()
 
@@ -130,11 +125,24 @@ func publishHostRank(host string) int {
 	}
 }
 
-// Ping checks engine connectivity.
-func Ping(ctx context.Context, host string) error {
-	if host == "" {
-		host = ResolveHost()
+func (s *Source) client() (*client.Client, string, error) {
+	if s.Host != "" && s.Context == "" {
+		host := s.Host
+		cli, err := client.NewClientWithOpts(
+			client.FromEnv,
+			client.WithHost(host),
+			client.WithAPIVersionNegotiation(),
+		)
+		if err != nil {
+			return nil, host, fmt.Errorf("docker client: %w", err)
+		}
+		return cli, host, nil
 	}
+	return NewClient(s.Context)
+}
+
+// Ping checks engine connectivity for a resolved host (legacy helper).
+func Ping(ctx context.Context, host string) error {
 	cli, err := client.NewClientWithOpts(
 		client.FromEnv,
 		client.WithHost(host),
@@ -146,4 +154,15 @@ func Ping(ctx context.Context, host string) error {
 	defer cli.Close()
 	_, err = cli.Ping(ctx)
 	return err
+}
+
+// PingContext probes the Engine for a procpane context selection (empty = ResolveHost).
+func PingContext(ctx context.Context, selectedContext string) (host string, err error) {
+	cli, host, err := NewClient(selectedContext)
+	if err != nil {
+		return "", err
+	}
+	defer cli.Close()
+	_, err = cli.Ping(ctx)
+	return host, err
 }

@@ -10,9 +10,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// State holds lightweight procpane preferences (SSH host enable flags).
+// State holds lightweight procpane preferences (SSH host enable flags, Docker context).
 type State struct {
-	SSH SSHState `yaml:"ssh"`
+	Docker DockerState `yaml:"docker,omitempty"`
+	SSH    SSHState    `yaml:"ssh"`
+}
+
+// DockerState holds the selected Docker CLI context name (empty = DOCKER_HOST / local socket).
+type DockerState struct {
+	Context string `yaml:"context,omitempty"`
 }
 
 // SSHState tracks which OpenSSH config Host aliases are enabled.
@@ -112,25 +118,46 @@ func (s *Store) IsSSHEnabled(alias string) (bool, error) {
 	return st.SSH.Enabled[alias], nil
 }
 
+// DockerContext returns the persisted Docker context name (may be empty).
+func (s *Store) DockerContext() (string, error) {
+	st, err := s.Load()
+	if err != nil {
+		return "", err
+	}
+	return st.Docker.Context, nil
+}
+
+// SetDockerContext sets or clears the Docker context preference.
+func (s *Store) SetDockerContext(name string) error {
+	st, err := s.Load()
+	if err != nil {
+		return err
+	}
+	st.Docker.Context = name
+	return s.Save(st)
+}
+
 // ConfigSummary is a read-only view for CLI/GUI.
 type ConfigSummary struct {
-	StatePath     string            `json:"statePath"`
-	SSHEnabled    map[string]bool   `json:"sshEnabled"`
-	DockerHost    string            `json:"dockerHost"`
+	StatePath       string          `json:"statePath"`
+	SSHEnabled      map[string]bool `json:"sshEnabled"`
+	DockerContext   string          `json:"dockerContext,omitempty"`
+	DockerHost      string          `json:"dockerHost"`
 	DockerReachable bool            `json:"dockerReachable"`
-	DockerError   string            `json:"dockerError,omitempty"`
+	DockerError     string          `json:"dockerError,omitempty"`
 }
 
 // ShowSummary builds config + docker probe info.
-func ShowSummary(store *Store, dockerHost string, dockerOK bool, dockerErr error) (ConfigSummary, error) {
+func ShowSummary(store *Store, dockerContext, dockerHost string, dockerOK bool, dockerErr error) (ConfigSummary, error) {
 	st, err := store.Load()
 	if err != nil {
 		return ConfigSummary{}, err
 	}
 	sum := ConfigSummary{
-		StatePath:   store.Path(),
-		SSHEnabled:  copyMap(st.SSH.Enabled),
-		DockerHost:  dockerHost,
+		StatePath:       store.Path(),
+		SSHEnabled:      copyMap(st.SSH.Enabled),
+		DockerContext:   dockerContext,
+		DockerHost:      dockerHost,
 		DockerReachable: dockerOK,
 	}
 	if dockerErr != nil {

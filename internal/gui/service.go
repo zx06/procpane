@@ -30,11 +30,25 @@ type SSHHostView struct {
 	Enabled  bool   `json:"enabled"`
 }
 
-// DockerStatus is read-only Engine endpoint info.
+// DockerContextView is one Docker CLI context for Settings.
+type DockerContextView struct {
+	Name          string `json:"name"`
+	Description   string `json:"description,omitempty"`
+	Host          string `json:"host"`
+	SkipTLSVerify bool   `json:"skipTLSVerify,omitempty"`
+	Current       bool   `json:"current"`
+	Selected      bool   `json:"selected"`
+	Error         string `json:"error,omitempty"`
+}
+
+// DockerStatus is Engine endpoint info and context list for Settings / Docker tab.
 type DockerStatus struct {
-	Endpoint  string `json:"endpoint"`
-	Reachable bool   `json:"reachable"`
-	Error     string `json:"error,omitempty"`
+	Endpoint        string              `json:"endpoint"`
+	Reachable       bool                `json:"reachable"`
+	Error           string              `json:"error,omitempty"`
+	SelectedContext string              `json:"selectedContext,omitempty"`
+	CurrentContext  string              `json:"currentContext,omitempty"`
+	Contexts        []DockerContextView `json:"contexts,omitempty"`
 }
 
 // SettingsView backs the independent settings window.
@@ -83,7 +97,8 @@ func (p *ProcpaneService) ListDockerListeners() ([]model.Listener, error) {
 	defer p.mu.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	src := dockersrc.New()
+	selected, _ := p.store.DockerContext()
+	src := dockersrc.NewWithContext(selected)
 	return src.ListListeners(ctx)
 }
 
@@ -91,15 +106,7 @@ func (p *ProcpaneService) ListDockerListeners() ([]model.Listener, error) {
 func (p *ProcpaneService) DockerStatus() DockerStatus {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	host := dockersrc.ResolveHost()
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	err := dockersrc.Ping(ctx, host)
-	st := DockerStatus{Endpoint: host, Reachable: err == nil}
-	if err != nil {
-		st.Error = err.Error()
-	}
-	return st
+	return p.dockerStatusLocked()
 }
 
 // ListSSHHosts returns ssh_config aliases with enable flags.
@@ -171,15 +178,38 @@ func (p *ProcpaneService) GetSettings() (SettingsView, error) {
 }
 
 func (p *ProcpaneService) dockerStatusLocked() DockerStatus {
-	host := dockersrc.ResolveHost()
+	selected, _ := p.store.DockerContext()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err := dockersrc.Ping(ctx, host)
-	st := DockerStatus{Endpoint: host, Reachable: err == nil}
+	host, err := dockersrc.PingContext(ctx, selected)
+	st := DockerStatus{
+		Endpoint:        host,
+		Reachable:       err == nil,
+		SelectedContext: selected,
+		CurrentContext:  dockersrc.DockerCLICurrentContext(),
+	}
 	if err != nil {
 		st.Error = err.Error()
 	}
+	ctxs, listErr := dockersrc.ListContexts(selected)
+	if listErr != nil {
+		if st.Error == "" {
+			st.Error = listErr.Error()
+		}
+	} else {
+		st.Contexts = make([]DockerContextView, len(ctxs))
+		for i, c := range ctxs {
+			st.Contexts[i] = DockerContextView(c)
+		}
+	}
 	return st
+}
+
+// SetDockerContext persists the Docker context name (empty clears to DOCKER_HOST behavior).
+func (p *ProcpaneService) SetDockerContext(name string) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.store.SetDockerContext(name)
 }
 
 // SetSSHEnabled toggles one SSH host alias in persisted state.

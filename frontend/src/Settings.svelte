@@ -1,6 +1,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { getSettings, setSSHEnabled, type SettingsView } from "./lib/api";
+  import {
+    getSettings,
+    setSSHEnabled,
+    setDockerContext,
+    type SettingsView,
+  } from "./lib/api";
 
   let settings: SettingsView | null = $state(null);
   let saving = $state(false);
@@ -25,6 +30,28 @@
     }
   }
 
+  async function onDockerContextChange(ev: Event) {
+    const sel = ev.currentTarget as HTMLSelectElement;
+    saving = true;
+    message = "";
+    try {
+      await setDockerContext(sel.value);
+      await load();
+      message = "已保存";
+    } catch (e) {
+      console.error(e);
+      message = "保存失败";
+    } finally {
+      saving = false;
+    }
+  }
+
+  function contextLabel(c: SettingsView["docker"]["contexts"][number]) {
+    const mark = c.current ? " *" : "";
+    const host = c.host ? ` · ${c.host}` : "";
+    return `${c.name}${mark}${host}`;
+  }
+
   onMount(() => {
     void load();
   });
@@ -33,13 +60,27 @@
 <div class="settings-app">
   <header class="settings-hd">
     <h1>procpane 设置</h1>
-    <p class="sub">Docker 只读 · SSH 主机启用</p>
+    <p class="sub">Docker 上下文 · SSH 主机启用</p>
   </header>
 
   {#if settings}
     <section class="settings-block">
       <h2>Docker</h2>
       <div class="readonly">
+        <div class="row">
+          <span class="k">Context</span>
+          <select
+            class="ctx-select"
+            disabled={saving}
+            value={settings.docker.selectedContext ?? ""}
+            onchange={onDockerContextChange}
+          >
+            <option value="">（自动 — DOCKER_HOST / 本地 socket）</option>
+            {#each settings.docker.contexts ?? [] as c (c.name)}
+              <option value={c.name}>{contextLabel(c)}</option>
+            {/each}
+          </select>
+        </div>
         <div class="row">
           <span class="k">Endpoint</span>
           <span class="v mono">{settings.docker.endpoint}</span>
@@ -50,6 +91,9 @@
             {settings.docker.reachable ? "已连接" : "未连接"}
           </span>
         </div>
+        {#if settings.docker.currentContext}
+          <p class="hint dim">Docker CLI 当前：{settings.docker.currentContext}</p>
+        {/if}
         {#if settings.docker.error}
           <div class="err">{settings.docker.error}</div>
         {/if}
@@ -90,3 +134,17 @@
     <div class="toast">{message}</div>
   {/if}
 </div>
+
+<style>
+  .ctx-select {
+    flex: 1;
+    max-width: 100%;
+    font-family: inherit;
+    font-size: 0.85rem;
+    padding: 0.35rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--border, #333);
+    background: var(--surface, #1a1a1a);
+    color: inherit;
+  }
+</style>

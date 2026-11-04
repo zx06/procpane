@@ -12,7 +12,12 @@ v0.2 adds Docker as an independent HostSource. Options included netns/sidecar (A
 
 Use **A1**: `ContainerList` and each container's **published** port mappings (`Ports` / host `PublicPort`). No netns inspection, no sidecar.
 
-Implementation: official Moby API client (`github.com/moby/moby/client`), honoring `DOCKER_HOST` and default unix socket.
+Implementation: official Engine API client (`github.com/docker/docker/client`). Endpoint selection:
+
+- **No procpane context** in `state.yaml` → legacy `DOCKER_HOST` env, else `unix:///var/run/docker.sock` (unchanged).
+- **Explicit procpane context** → parse local Docker context store (`github.com/docker/cli/cli/context/store`, same layout as `docker context`), dial that endpoint (incl. TLS).
+
+GUI Settings exposes a context dropdown; CLI: `procpane config docker-contexts`, `procpane config docker-context`.
 
 ## Consequences
 
