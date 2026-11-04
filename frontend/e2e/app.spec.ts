@@ -82,6 +82,39 @@ test.describe("procpane UI (server build)", () => {
     await expect(detailSheet).toBeHidden();
   });
 
+  test("interaction: PID link opens process detail sheet", async ({ page }) => {
+    await page.goto("/");
+
+    const appCard = page.locator(".pcard").filter({ hasText: "procpane-app" });
+    await expect(appCard).toBeVisible({ timeout: 30_000 });
+
+    await appCard.scrollIntoViewIfNeeded();
+    await appCard.locator(".pcard-top").click({ force: true });
+    await expect(appCard.locator(".pcard-detail")).toBeVisible({ timeout: 10_000 });
+
+    const pidLink = appCard.locator(".pid-link");
+    await expect(pidLink).toBeVisible();
+    const pidText = await pidLink.innerText();
+    const pidMatch = pidText.match(/^PID (\d+)$/);
+    expect(pidMatch).not.toBeNull();
+    const pid = pidMatch![1];
+
+    await pidLink.click();
+
+    const detailSheet = page.locator(".sheet-detail");
+    await expect(detailSheet).toBeVisible({ timeout: 15_000 });
+    await expect(detailSheet.locator("#proc-detail-title")).toContainText(
+      "procpane-app",
+    );
+    await expect(detailSheet.locator(".detail-sub")).toHaveText(`PID ${pid}`);
+    await expect(
+      detailSheet.locator(".kv .r").filter({ hasText: "cmdline" }),
+    ).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(detailSheet).toBeHidden();
+  });
+
   test("interaction: proto chips toggle without error", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator(".cards-scroll")).toBeVisible();
