@@ -19,8 +19,9 @@ var (
 	lsofTCPRe = regexp.MustCompile(`(?i)^(\S+)\s+\d+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+TCP\s+(\S+):(\d+)\s+\(LISTEN\)`)
 	lsofUDPRe = regexp.MustCompile(`(?i)^(\S+)\s+\d+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+UDP\s+(\S+):(\d+)\s`)
 
-	netstatTCPRe = regexp.MustCompile(`(?i)^tcp\s+\d+\s+\d+\s+(\S+):(\d+)\s+\S+\s+LISTEN\s+(\d+)/(\S+)`)
-	netstatUDPRe = regexp.MustCompile(`(?i)^udp\s+\d+\s+\d+\s+(\S+):(\d+)\s+\S*\s*(\d+)/(\S+)`)
+	// PID/program may be "888/sshd" or "-" when non-root (no -p permission).
+	netstatTCPRe = regexp.MustCompile(`(?i)^tcp\s+\d+\s+\d+\s+(\S+):(\d+)\s+\S+\s+LISTEN\s+(-|\d+)(?:/(\S+))?`)
+	netstatUDPRe = regexp.MustCompile(`(?i)^udp\s+\d+\s+\d+\s+(\S+):(\d+)\s+\S*\s*(-|\d+)(?:/(\S+))?`)
 )
 
 type rawListen struct {
@@ -92,17 +93,33 @@ func parseLsofLine(line string) (rawListen, bool) {
 }
 
 func parseNetstatLine(line string) (rawListen, bool) {
-	if m := netstatTCPRe.FindStringSubmatch(line); len(m) >= 5 {
+	if m := netstatTCPRe.FindStringSubmatch(line); len(m) >= 4 {
 		port := parsePort(m[2])
-		pid, _ := strconv.ParseInt(m[3], 10, 32)
-		return rawListen{Port: port, Proto: model.ProtoTCP, PID: int32(pid), Name: m[4]}, port > 0
+		pid := netstatPID(m[3])
+		name := ""
+		if len(m) >= 5 {
+			name = m[4]
+		}
+		return rawListen{Port: port, Proto: model.ProtoTCP, PID: pid, Name: name}, port > 0
 	}
-	if m := netstatUDPRe.FindStringSubmatch(line); len(m) >= 5 {
+	if m := netstatUDPRe.FindStringSubmatch(line); len(m) >= 4 {
 		port := parsePort(m[2])
-		pid, _ := strconv.ParseInt(m[3], 10, 32)
-		return rawListen{Port: port, Proto: model.ProtoUDP, PID: int32(pid), Name: m[4]}, port > 0
+		pid := netstatPID(m[3])
+		name := ""
+		if len(m) >= 5 {
+			name = m[4]
+		}
+		return rawListen{Port: port, Proto: model.ProtoUDP, PID: pid, Name: name}, port > 0
 	}
 	return rawListen{}, false
+}
+
+func netstatPID(field string) int32 {
+	if field == "" || field == "-" {
+		return 0
+	}
+	pid, _ := strconv.ParseInt(field, 10, 32)
+	return int32(pid)
 }
 
 func parsePort(s string) uint32 {

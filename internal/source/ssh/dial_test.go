@@ -4,16 +4,20 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"net"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
 	gossh "golang.org/x/crypto/ssh"
 )
 
-func startTestSSHServer(t *testing.T) (addr string, cleanup func()) {
+func startTestSSHServer(t *testing.T) (addr string, identityFile string, cleanup func()) {
 	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -23,8 +27,25 @@ func startTestSSHServer(t *testing.T) (addr string, cleanup func()) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cfg := &gossh.ServerConfig{NoClientAuth: true}
+	dir := t.TempDir()
+	identityFile = filepath.Join(dir, "id_test_rsa")
+	pemBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	})
+	if err := os.WriteFile(identityFile, pemBytes, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := &gossh.ServerConfig{}
 	cfg.AddHostKey(signer)
+	wantPub := signer.PublicKey().Marshal()
+	cfg.PublicKeyCallback = func(_ gossh.ConnMetadata, pub gossh.PublicKey) (*gossh.Permissions, error) {
+		if string(pub.Marshal()) == string(wantPub) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("unexpected public key")
+	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +81,7 @@ func startTestSSHServer(t *testing.T) (addr string, cleanup func()) {
 		}
 	}()
 	_, portStr, _ := net.SplitHostPort(ln.Addr().String())
-	return net.JoinHostPort("127.0.0.1", portStr), func() {
+	return net.JoinHostPort("127.0.0.1", portStr), identityFile, func() {
 		ln.Close()
 		<-done
 	}
@@ -70,7 +91,7 @@ func TestDialProxyCommand(t *testing.T) {
 	if _, err := exec.LookPath("nc"); err != nil {
 		t.Skip("nc not installed")
 	}
-	serverAddr, stop := startTestSSHServer(t)
+	serverAddr, identityFile, stop := startTestSSHServer(t)
 	defer stop()
 	_, portStr, err := net.SplitHostPort(serverAddr)
 	if err != nil {
@@ -78,11 +99,13 @@ func TestDialProxyCommand(t *testing.T) {
 	}
 
 	entry := HostEntry{
-		Alias:        "proxy-test",
-		Hostname:     "127.0.0.1",
-		Port:         portStr,
-		ProxyCommand: fmt.Sprintf(`nc -w 5 127.0.0.1 %s`, portStr),
+		Alias:          "proxy-test",
+		Hostname:       "127.0.0.1",
+		Port:           portStr,
+		ProxyCommand:   fmt.Sprintf(`nc -w 5 127.0.0.1 %s`, portStr),
 		ConnectTimeout: 5 * time.Second,
+		IdentityFiles:  []string{identityFile},
+		IdentitiesOnly: true,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

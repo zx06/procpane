@@ -41,3 +41,20 @@ udp        0      0 0.0.0.0:68              0.0.0.0:*                           
 		t.Fatalf("tcp: %+v", raw[0])
 	}
 }
+
+func TestParseNetstatNoRootPID(t *testing.T) {
+	// Non-root netstat -ltnp: LISTEN rows show "-" instead of pid/program.
+	sample := `tcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN      -
+tcp        0      0 127.0.0.1:445           0.0.0.0:*               LISTEN      -
+`
+	raw := parseListenOutput("netstat", sample)
+	if len(raw) != 2 {
+		t.Fatalf("expected 2, got %d: %+v", len(raw), raw)
+	}
+	if raw[0].Port != 8080 || raw[0].Proto != model.ProtoTCP || raw[0].PID != 0 {
+		t.Fatalf("first row: %+v", raw[0])
+	}
+	if raw[1].Port != 445 || raw[1].PID != 0 {
+		t.Fatalf("second row: %+v", raw[1])
+	}
+}
