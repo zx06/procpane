@@ -39,6 +39,17 @@ export function ListListeners(proto) {
 }
 
 /**
+ * ShowProcess returns enriched metadata for a PID (parent chain drill-down).
+ * @param {number} pid
+ * @returns {$CancellablePromise<model$0.ProcessInfo>}
+ */
+export function ShowProcess(pid) {
+    return $Call.ByID(9232012, pid).then(/** @type {($result: any) => any} */(($result) => {
+        return $$createType3($result);
+    }));
+}
+
+/**
  * Version returns the app version string for the UI badge.
  * @returns {$CancellablePromise<string>}
  */
@@ -50,3 +61,4 @@ export function Version() {
 const $$createType0 = model$0.KillResult.createFrom;
 const $$createType1 = model$0.Listener.createFrom;
 const $$createType2 = $Create.Array($$createType1);
+const $$createType3 = model$0.ProcessInfo.createFrom;

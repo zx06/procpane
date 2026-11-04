@@ -59,6 +59,29 @@ test.describe("procpane UI (server build)", () => {
     });
   });
 
+  test("interaction: chain node opens process detail sheet", async ({ page }) => {
+    await page.goto("/");
+
+    const appCard = page.locator(".pcard").filter({ hasText: "procpane-app" });
+    await expect(appCard).toBeVisible({ timeout: 30_000 });
+
+    await appCard.scrollIntoViewIfNeeded();
+    await appCard.locator(".pcard-top").click({ force: true });
+    await expect(appCard.locator(".pcard-detail")).toBeVisible({ timeout: 10_000 });
+
+    const chainNode = appCard.locator(".chain .n.clickable").first();
+    await expect(chainNode).toBeVisible();
+    await chainNode.click();
+
+    const detailSheet = page.locator(".sheet-detail");
+    await expect(detailSheet).toBeVisible({ timeout: 15_000 });
+    await expect(detailSheet.locator("#proc-detail-title")).toBeVisible();
+    await expect(page.getByRole("button", { name: "关闭" })).toBeVisible();
+
+    await page.getByRole("button", { name: "关闭" }).click();
+    await expect(detailSheet).toBeHidden();
+  });
+
   test("interaction: proto chips toggle without error", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator(".cards-scroll")).toBeVisible();
