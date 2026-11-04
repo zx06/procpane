@@ -21,12 +21,12 @@ Re-run `./scripts/check-pins.sh` after bumping versions; update README in the sa
 
 ## Cross-platform checklist
 
-See **[`docs/self-test.md`](docs/self-test.md)** for the full matrix (Linux automated evidence in `evidence/linux-smoke-2026-11-04.txt`).
-
-- [x] Linux CLI: list / json / find / show / refuse kill 1 (CI + evidence file)
+- [x] Linux CLI: list / json / find / show / refuse kill 1 (`./scripts/test-cli.sh` / CI)
 - [ ] macOS: menu bar tray + GUI parity with CLI
 - [ ] Windows: CLI steps in README “Windows self-test”; GUI + WebView2
 - [ ] Kill confirmation on a throwaway process (CLI + GUI modal)
+
+Do **not** commit local smoke logs under `evidence/` or a `docs/self-test.md` dump — keep checklist notes out of the repo.
 
 ## AI contributors
 
