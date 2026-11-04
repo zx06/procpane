@@ -36,12 +36,20 @@ func (s *Source) ListListeners(ctx context.Context) ([]model.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
-
 	raw, tool, err := collectRemote(ctx, client)
 	if err != nil {
-		return nil, err
+		client.Close()
+		client, dialErr := dial(ctx, entry)
+		if dialErr != nil {
+			return nil, err
+		}
+		raw, tool, err = collectRemote(ctx, client)
+		if err != nil {
+			client.Close()
+			return nil, err
+		}
 	}
+	defer client.Close()
 	listeners := rawToListeners(s.HostAlias, raw)
 	enrichRemote(ctx, client, tool, listeners)
 	return listeners, nil
@@ -170,7 +178,35 @@ func collectRemoteWithRun(ctx context.Context, run func(string) (string, error))
 	return nil, "", fmt.Errorf("remote listen scan failed (ss/lsof/netstat)")
 }
 
+// remoteEmptyOutputAttempts is initial run plus retries when Session.Run exits 0
+// but stdout is empty (seen on QNAP BusyBox via golang.org/x/crypto/ssh).
+const remoteEmptyOutputAttempts = 3
+
+func retryRemoteOutput(attempts int, run func() (string, error)) (string, error) {
+	if attempts < 1 {
+		attempts = 1
+	}
+	var out string
+	var err error
+	for i := 0; i < attempts; i++ {
+		out, err = run()
+		if err != nil {
+			return "", err
+		}
+		if strings.TrimSpace(out) != "" {
+			return out, nil
+		}
+	}
+	return out, err
+}
+
 func runRemote(ctx context.Context, client *gossh.Client, cmd string) (string, error) {
+	return retryRemoteOutput(remoteEmptyOutputAttempts, func() (string, error) {
+		return runRemoteOnce(ctx, client, cmd)
+	})
+}
+
+func runRemoteOnce(ctx context.Context, client *gossh.Client, cmd string) (string, error) {
 	sess, err := client.NewSession()
 	if err != nil {
 		return "", err

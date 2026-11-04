@@ -65,6 +65,73 @@ func TestCollectRemoteAggregatesSeparateRuns(t *testing.T) {
 	}
 }
 
+func TestRetryRemoteOutputEmptyThenData(t *testing.T) {
+	var n int
+	out, err := retryRemoteOutput(3, func() (string, error) {
+		n++
+		if n < 3 {
+			return "", nil
+		}
+		return "tcp listen row\n", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != "tcp listen row\n" {
+		t.Fatalf("out=%q", out)
+	}
+	if n != 3 {
+		t.Fatalf("attempts=%d want 3", n)
+	}
+}
+
+func TestRetryRemoteOutputStopsOnError(t *testing.T) {
+	var n int
+	_, err := retryRemoteOutput(3, func() (string, error) {
+		n++
+		return "", fmt.Errorf("127")
+	})
+	if err == nil {
+		t.Fatal("want error")
+	}
+	if n != 1 {
+		t.Fatalf("attempts=%d want 1", n)
+	}
+}
+
+func TestCollectRemoteWithRunRemoteStyleRetries(t *testing.T) {
+	attempts := map[string]int{}
+	run := func(cmd string) (string, error) {
+		return retryRemoteOutput(3, func() (string, error) {
+			attempts[cmd]++
+			switch cmd {
+			case "ss -H -ltnp 2>/dev/null", "ss -H -lunp 2>/dev/null",
+				"lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null", "lsof -nP -iUDP 2>/dev/null":
+				return "", fmt.Errorf("missing")
+			case "netstat -ltnp 2>/dev/null":
+				if attempts[cmd] < 2 {
+					return "", nil
+				}
+				return "tcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN      -\n", nil
+			case "netstat -lunp 2>/dev/null":
+				return "", nil
+			default:
+				return "", fmt.Errorf("unexpected %q", cmd)
+			}
+		})
+	}
+	raw, tool, err := collectRemoteWithRun(context.Background(), run)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tool != "netstat" || len(raw) != 1 {
+		t.Fatalf("tool=%q raw=%+v", tool, raw)
+	}
+	if attempts["netstat -ltnp 2>/dev/null"] != 2 {
+		t.Fatalf("tcp attempts=%d want 2", attempts["netstat -ltnp 2>/dev/null"])
+	}
+}
+
 func TestCollectRemoteMergesTCPAndUDP(t *testing.T) {
 	run := func(cmd string) (string, error) {
 		switch cmd {
