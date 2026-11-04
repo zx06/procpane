@@ -6,9 +6,15 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
-	"github.com/wailsapp/wails/v3/pkg/icons"
+	procpaneicons "github.com/zx06/procpane/assets/icons"
 	procpanefrontend "github.com/zx06/procpane/frontend"
 	"github.com/zx06/procpane/internal/gui"
+)
+
+// Default tray popover size (compact menu-bar utility, not a full app window).
+const (
+	windowWidth  = 440
+	windowHeight = 520
 )
 
 func main() {
@@ -17,6 +23,7 @@ func main() {
 	app := application.New(application.Options{
 		Name:        "procpane",
 		Description: "Local LISTEN port panel",
+		Icon:        procpaneicons.App256,
 		Services: []application.Service{
 			application.NewService(svc),
 		},
@@ -33,20 +40,22 @@ func main() {
 
 	tray := app.SystemTray.New()
 	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:           "procpane — 本地监听端口",
-		Width:           920,
-		Height:          620,
-		Name:            "main",
-		URL:             "/",
-		Hidden:          false,
-		HideOnEscape:    true,
-		HideOnFocusLost: false,
-		BackgroundColour: application.NewRGB(11, 13, 18),
+		Title:            "procpane",
+		Width:            windowWidth,
+		Height:           windowHeight,
+		Name:             "main",
+		URL:              "/",
+		Hidden:           false,
+		HideOnEscape:     true,
+		HideOnFocusLost:  false,
+		BackgroundColour: application.NewRGB(242, 244, 248),
 		Mac: application.MacWindow{
-			TitleBar: application.MacTitleBarHiddenInset,
+			TitleBar:   application.MacTitleBarHiddenInset,
+			Appearance: application.DefaultAppearance,
 		},
 		Windows: application.WindowsWindow{
 			HiddenOnTaskbar: false,
+			Theme:           application.SystemDefault,
 		},
 	})
 
@@ -55,8 +64,13 @@ func main() {
 		e.Cancel()
 	})
 
-	if runtime.GOOS == "darwin" {
-		tray.SetTemplateIcon(icons.SystrayMacTemplate)
+	switch runtime.GOOS {
+	case "darwin":
+		tray.SetTemplateIcon(procpaneicons.TrayMacTemplate)
+	case "windows":
+		tray.SetIcon(procpaneicons.WindowsICO)
+	default:
+		tray.SetIcon(procpaneicons.TrayDark)
 	}
 
 	menu := app.NewMenu()

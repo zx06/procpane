@@ -2,6 +2,8 @@ module github.com/zx06/procpane
 
 go 1.27.3
 
+toolchain go1.27.3
+
 require (
 	github.com/shirou/gopsutil/v4 v4.26.10
 	github.com/spf13/cobra v1.10.2
