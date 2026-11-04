@@ -3,6 +3,7 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"
+readme_src="$root/scripts/release/macos-install-README.txt"
 binary="${1:-$root/dist/release-app/procpane-app}"
 out_dir="${2:-$root/dist/release-app}"
 app_name="procpane.app"
@@ -11,6 +12,10 @@ zip_name="procpane-app-darwin-arm64.zip"
 
 if [ ! -f "$binary" ]; then
   echo "binary not found: $binary" >&2
+  exit 1
+fi
+if [ ! -f "$readme_src" ]; then
+  echo "install README not found: $readme_src" >&2
   exit 1
 fi
 
@@ -42,12 +47,14 @@ fi
 dmg_staging="$staging/dmg-root"
 mkdir -p "$dmg_staging"
 cp -R "$app_root" "$dmg_staging/"
+cp "$readme_src" "$dmg_staging/README.txt"
 ln -s /Applications "$dmg_staging/Applications"
 
 rm -f "$out_dir/$dmg_name"
 hdiutil create -volname "procpane" -srcfolder "$dmg_staging" -ov -format UDZO "$out_dir/$dmg_name"
 
+cp "$readme_src" "$staging/README.txt"
 rm -f "$out_dir/$zip_name"
-( cd "$staging" && zip -9 -r "$out_dir/$zip_name" "$app_name" )
+( cd "$staging" && zip -9 -r "$out_dir/$zip_name" "$app_name" README.txt )
 
 echo "macOS GUI packages in $out_dir: $dmg_name, $zip_name"
