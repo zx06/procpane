@@ -48,6 +48,7 @@ func PairLocalConnections(raw []RawConnection) []PairedConnection {
 		pc := PairedConnection{Raw: r}
 		remoteLocal := IsLocalHost(r.RemoteHost, localAddrs)
 		if remoteLocal {
+			// Always local interconnect class — never inbound/outbound external, even when unpaired.
 			pc.Direction = model.ConnLocal
 			rev := connKey{r.RemoteHost, r.RemotePort, r.LocalHost, r.LocalPort}
 			if peer, ok := index[rev.String()]; ok && peer.PID > 0 && peer.PID != r.PID {

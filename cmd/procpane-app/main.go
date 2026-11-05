@@ -97,7 +97,7 @@ func main() {
 		Hidden:           true,
 		Frameless:        false,
 		AlwaysOnTop:      false,
-		HideOnEscape:     true,
+		HideOnEscape:     false,
 		BackgroundColour: application.NewRGB(242, 244, 248),
 		Mac: application.MacWindow{
 			Appearance: application.DefaultAppearance,
@@ -150,11 +150,11 @@ func main() {
 	menu.Add("刷新当前源").OnClick(func(_ *application.Context) {
 		svc.RefreshCurrentSource()
 	})
-	menu.Add("设置…").OnClick(func(_ *application.Context) {
-		settingsWindow.Show()
-	})
 	menu.Add("本地链路图…").OnClick(func(_ *application.Context) {
 		connGraphWindow.Show()
+	})
+	menu.Add("设置…").OnClick(func(_ *application.Context) {
+		settingsWindow.Show()
 	})
 	menu.AddSeparator()
 	menu.Add("退出 procpane").OnClick(func(_ *application.Context) {

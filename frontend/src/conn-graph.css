@@ -405,3 +405,14 @@ table.cg-table {
   font-size: 12px;
   color: var(--danger);
 }
+
+.cg-conn-row .peer.unpaired,
+.cg-table .unpaired {
+  color: var(--warn);
+  font-family: var(--sans);
+  font-size: 10px;
+}
+
+.cg-flow :global(.svelte-flow__edge-path) {
+  fill: none;
+}

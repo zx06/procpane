@@ -24,6 +24,8 @@ export type UiConn = {
   dir: DirUi;
   peerPid: number | null;
   peerName: string;
+  /** Local loopback row without a matched peer process (graph skips; table may show). */
+  unpairedLocal?: boolean;
 };
 
 export function dirFromModel(d: string): DirUi {
@@ -40,15 +42,18 @@ export function isBrowserProcess(name: string): boolean {
 }
 
 export function toUiConn(c: Connection): UiConn {
+  const dir = dirFromModel(c.direction);
+  const peerPid = c.peerPid > 0 ? c.peerPid : null;
   return {
     id: c.id,
     pid: c.pid,
     name: c.name,
     local: `${c.localHost}:${c.localPort}`,
     remote: `${c.remoteHost}:${c.remotePort}`,
-    dir: dirFromModel(c.direction),
-    peerPid: c.peerPid > 0 ? c.peerPid : null,
+    dir,
+    peerPid,
     peerName: c.peerName || "",
+    unpairedLocal: dir === "local" && peerPid == null,
   };
 }
 
@@ -59,7 +64,16 @@ function canonicalLocalKey(c: UiConn): string {
   return `${x}|${y}|${Math.min(c.pid, c.peerPid ?? c.pid)}|${Math.max(c.pid, c.peerPid ?? c.pid)}`;
 }
 
-/** One row per undirected local edge for the graph (table still shows all rows). */
+/** Filtered rows for table/sidebar (dedupes mirrored local interconnect rows). */
+export function displayTableRows(
+  all: UiConn[],
+  filters: GraphFilters,
+  namesByPid: Map<number, string>,
+): UiConn[] {
+  return graphEdgeRows(all.filter((c) => connVisible(c, filters, namesByPid)));
+}
+
+/** One row per undirected local edge for the graph (table uses the same dedupe). */
 export function graphEdgeRows(all: UiConn[]): UiConn[] {
   const seen = new Set<string>();
   return all.filter((c) => {

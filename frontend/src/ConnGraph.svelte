@@ -17,8 +17,8 @@
   import { listLocalConnections } from "./lib/api";
   import { buildFlowGraph } from "./lib/connGraphFlow";
   import {
-    connVisible,
     dirLabel,
+    displayTableRows,
     namesByPidFrom,
     toUiConn,
     type GraphFilters,
@@ -56,7 +56,7 @@
   }
 
   function filteredTableRows(): UiConn[] {
-    return connections.filter((c) => connVisible(c, filters, namesByPid()));
+    return displayTableRows(connections, filters, namesByPid());
   }
 
   function sideRows(): UiConn[] {
@@ -116,7 +116,7 @@
 
   function onSearchInput(ev: Event) {
     filters = { ...filters, search: (ev.currentTarget as HTMLInputElement).value };
-    syncFlowGraph(true);
+    syncFlowGraph(false);
   }
 
   function selectPid(pid: number | null, edgeId: string | null = null) {
@@ -264,6 +264,8 @@
                 <span class="cg-dir-badge {c.dir}">{dirLabel(c.dir)}</span>
                 {#if c.peerPid}
                   <span class="peer">{c.peerName || "?"} · {c.peerPid}</span>
+                {:else if c.unpairedLocal}
+                  <span class="peer unpaired">未配对本地</span>
                 {/if}
               </div>
             </div>
@@ -299,7 +301,9 @@
                 <td class="mono">{c.remote}</td>
                 <td><span class="cg-dir-badge {c.dir}">{dirLabel(c.dir)}</span></td>
                 <td class="mono"
-                  >{#if c.peerPid}{c.peerName} {c.peerPid}{:else}—{/if}</td
+                  >{#if c.peerPid}{c.peerName} {c.peerPid}{:else if c.unpairedLocal}<span
+                      class="unpaired">未配对本地</span
+                    >{:else}—{/if}</td
                 >
               </tr>
             {/each}
