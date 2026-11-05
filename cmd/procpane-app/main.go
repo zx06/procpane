@@ -98,13 +98,16 @@ func main() {
 		Frameless:        false,
 		AlwaysOnTop:      false,
 		HideOnEscape:     false,
-		BackgroundColour: application.NewRGB(242, 244, 248),
+		BackgroundType:   application.BackgroundTypeTranslucent,
+		BackgroundColour: application.NewRGBA(246, 247, 250, 0),
 		Mac: application.MacWindow{
 			Appearance: application.DefaultAppearance,
+			Backdrop:   application.MacBackdropTranslucent,
 		},
 		Windows: application.WindowsWindow{
 			HiddenOnTaskbar: false,
 			Theme:           application.SystemDefault,
+			BackdropType:    application.Acrylic,
 		},
 	})
 

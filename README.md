@@ -101,6 +101,12 @@ SSH uses OpenSSH config + key/agent auth (**no password**). Docker uses `DOCKER_
    ./bin/procpane-app
    ```
 
+   **macOS** — the conn-graph window uses a native frosted backdrop; build with `-tags private_mac_apis` so WKWebView is transparent and the blur shows through (release macOS artifacts use this tag):
+
+   ```bash
+   go build -tags private_mac_apis -o bin/procpane-app ./cmd/procpane-app
+   ```
+
    **Windows** (GUI subsystem — avoids a flashing CMD window):
 
    ```powershell
@@ -170,7 +176,7 @@ Maintainers tag semver releases on `main` (do not merge release PRs without revi
 | `procpane-windows-amd64-setup.exe` | NSIS GUI installer (unsigned); needs WebView2 runtime |
 | `procpane-app-windows-amd64.zip` | Portable tray GUI (`procpane-app.exe`); needs WebView2 |
 
-**Not shipped (v1 release stream):** Linux arm64 GUI, macOS Intel/universal builds, Windows arm64 GUI, Apple notarization, MSI. GUI builds use `go build ./cmd/procpane-app` after `./scripts/build-frontend.sh` on each target OS (Wails Wake/Taskfile is not wired in this repo yet).
+**Not shipped (v1 release stream):** Linux arm64 GUI, macOS Intel/universal builds, Windows arm64 GUI, Apple notarization, MSI. GUI builds use `go build ./cmd/procpane-app` after `./scripts/build-frontend.sh` on each target OS (macOS release adds `-tags private_mac_apis`; Wails Taskfile is not wired in this repo yet).
 
 Packaging helpers live under `scripts/release/` (`package-macos-gui.sh`, `procpane-windows-amd64.nsi`). The macOS `.app` bundles `NSLocalNetworkUsageDescription` and adhoc signing with `com.zx06.procpane` so Sequoia+ can grant Local Network access for SSH/Docker on your LAN.
 

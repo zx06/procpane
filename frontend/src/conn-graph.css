@@ -8,6 +8,13 @@
   --ok-soft: rgba(5, 150, 105, 0.12);
   --row-hover: rgba(0, 0, 0, 0.035);
   --row-on: rgba(0, 122, 255, 0.08);
+  --cg-glass-blur: 22px;
+  --cg-glass-bg: rgba(255, 255, 255, 0.58);
+  --cg-glass-elev: rgba(255, 255, 255, 0.68);
+  --cg-glass-inset: rgba(255, 255, 255, 0.42);
+  --cg-glass-border: rgba(255, 255, 255, 0.55);
+  --cg-glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.65) inset,
+    0 8px 32px rgba(28, 36, 52, 0.06);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,21 +28,35 @@
     --ok-soft: rgba(48, 209, 88, 0.16);
     --row-hover: rgba(255, 255, 255, 0.05);
     --row-on: rgba(10, 132, 255, 0.16);
+    --cg-glass-bg: rgba(36, 39, 48, 0.62);
+    --cg-glass-elev: rgba(46, 50, 60, 0.72);
+    --cg-glass-inset: rgba(20, 22, 28, 0.45);
+    --cg-glass-border: rgba(255, 255, 255, 0.12);
+    --cg-glass-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset,
+      0 8px 32px rgba(0, 0, 0, 0.28);
   }
 }
 
 html.conn-graph-root,
 html.conn-graph-root body {
   overflow: hidden;
-  background: var(--pop);
+  background: transparent;
 }
 
 .conn-graph-app {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: var(--pop);
+  background: transparent;
   color: var(--text);
+}
+
+.cg-glass {
+  background: var(--cg-glass-bg);
+  backdrop-filter: blur(var(--cg-glass-blur)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--cg-glass-blur)) saturate(1.35);
+  border-color: var(--cg-glass-border);
+  box-shadow: var(--cg-glass-shadow);
 }
 
 .cg-toolbar {
@@ -46,6 +67,9 @@ html.conn-graph-root body {
   padding: 10px 12px;
   border-bottom: 1px solid var(--hair2);
   flex-shrink: 0;
+  background: var(--cg-glass-elev);
+  backdrop-filter: blur(var(--cg-glass-blur)) saturate(1.35);
+  -webkit-backdrop-filter: blur(var(--cg-glass-blur)) saturate(1.35);
 }
 
 .cg-search {
@@ -57,8 +81,10 @@ html.conn-graph-root body {
   max-width: 280px;
   padding: 6px 10px;
   border-radius: 8px;
-  border: 1px solid var(--hair);
-  background: var(--pop-elev);
+  border: 1px solid var(--cg-glass-border);
+  background: var(--cg-glass-inset);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
 }
 
 .cg-search svg {
@@ -95,8 +121,10 @@ html.conn-graph-root body {
   font: 500 11px/1.3 var(--sans);
   padding: 5px 8px;
   border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--local) 35%, var(--hair));
-  background: var(--local-soft);
+  border: 1px solid color-mix(in srgb, var(--local) 35%, var(--cg-glass-border));
+  background: color-mix(in srgb, var(--local-soft) 70%, var(--cg-glass-inset));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--text);
 }
 
@@ -114,8 +142,10 @@ html.conn-graph-root body {
 }
 
 .cg-chip {
-  border: 1px solid var(--hair);
-  background: var(--pop-elev);
+  border: 1px solid var(--cg-glass-border);
+  background: var(--cg-glass-inset);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--muted);
   border-radius: 999px;
   padding: 5px 10px;
@@ -125,13 +155,13 @@ html.conn-graph-root body {
 
 .cg-chip.on {
   color: var(--text);
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--hair));
-  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--cg-glass-border));
+  background: color-mix(in srgb, var(--accent-soft) 75%, var(--cg-glass-elev));
 }
 
 .cg-chip.local-filter.on {
-  border-color: color-mix(in srgb, var(--local) 40%, var(--hair));
-  background: var(--local-soft);
+  border-color: color-mix(in srgb, var(--local) 40%, var(--cg-glass-border));
+  background: color-mix(in srgb, var(--local-soft) 80%, var(--cg-glass-elev));
   color: var(--local);
 }
 
@@ -215,24 +245,33 @@ html.conn-graph-root body {
 .cg-flow :global(.svelte-flow) {
   width: 100%;
   height: 100%;
-  background: var(--pop);
+  background: transparent;
+}
+
+.cg-flow :global(.svelte-flow__background) {
+  opacity: 0.45;
 }
 
 .cg-flow :global(.svelte-flow__minimap.cg-minimap) {
-  border: 1px solid var(--hair);
-  border-radius: 8px;
+  border: 1px solid var(--cg-glass-border);
+  border-radius: 10px;
   overflow: hidden;
+  background: var(--cg-glass-elev);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .cg-flow :global(.svelte-flow__controls) {
-  box-shadow: none;
-  border: 1px solid var(--hair);
-  border-radius: 8px;
+  box-shadow: var(--cg-glass-shadow);
+  border: 1px solid var(--cg-glass-border);
+  border-radius: 10px;
   overflow: hidden;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .cg-flow :global(.svelte-flow__controls-button) {
-  background: var(--pop-elev);
+  background: var(--cg-glass-elev);
   border-bottom: 1px solid var(--hair2);
   fill: var(--text);
 }
@@ -248,6 +287,11 @@ html.conn-graph-root body {
   font-size: 10px;
   color: var(--faint);
   pointer-events: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--cg-glass-inset) 85%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .cg-side {
@@ -256,6 +300,9 @@ html.conn-graph-root body {
   overflow: auto;
   padding: 12px;
   min-height: 0;
+  background: var(--cg-glass-bg);
+  backdrop-filter: blur(var(--cg-glass-blur)) saturate(1.25);
+  -webkit-backdrop-filter: blur(var(--cg-glass-blur)) saturate(1.25);
 }
 
 .cg-side-empty {
@@ -297,8 +344,10 @@ html.conn-graph-root body {
 }
 
 .cg-stat {
-  background: var(--inset);
-  border: 1px solid var(--hair2);
+  background: var(--cg-glass-inset);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--cg-glass-border);
   border-radius: 8px;
   padding: 8px 6px;
   text-align: center;
@@ -334,8 +383,10 @@ html.conn-graph-root body {
 }
 
 .cg-conn-row {
-  background: var(--pop-elev);
-  border: 1px solid var(--hair);
+  background: var(--cg-glass-elev);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--cg-glass-border);
   border-radius: 8px;
   padding: 8px 9px;
   font-size: 11px;
@@ -343,12 +394,12 @@ html.conn-graph-root body {
 }
 
 .cg-conn-row:hover {
-  background: var(--row-hover);
+  background: color-mix(in srgb, var(--row-hover) 50%, var(--cg-glass-elev));
 }
 
 .cg-conn-row.on {
-  background: var(--row-on);
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--hair));
+  background: color-mix(in srgb, var(--row-on) 65%, var(--cg-glass-elev));
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--cg-glass-border));
 }
 
 .cg-conn-row .addrs {
@@ -391,7 +442,9 @@ html.conn-graph-root body {
   grid-column: 1 / -1;
   grid-row: 2;
   border-top: 1px solid var(--hair2);
-  background: var(--pop-elev);
+  background: var(--cg-glass-elev);
+  backdrop-filter: blur(var(--cg-glass-blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--cg-glass-blur)) saturate(1.3);
   max-height: 168px;
   overflow: auto;
 }
@@ -405,7 +458,9 @@ table.cg-table {
 .cg-table th {
   position: sticky;
   top: 0;
-  background: color-mix(in srgb, var(--pop-elev) 92%, var(--muted));
+  background: color-mix(in srgb, var(--cg-glass-elev) 88%, var(--muted));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   text-align: left;
   font-weight: 650;
   color: var(--muted);
@@ -470,4 +525,19 @@ table.cg-table {
 
 .cg-flow :global(.svelte-flow__edge-path) {
   fill: none;
+}
+
+/* Process nodes: frosted cards (override global .pcard solids) */
+html.conn-graph-root :global(.flow-proc-node.pcard) {
+  background: var(--cg-glass-elev);
+  backdrop-filter: blur(16px) saturate(1.25);
+  -webkit-backdrop-filter: blur(16px) saturate(1.25);
+  border: 1px solid var(--cg-glass-border);
+  box-shadow: var(--cg-glass-shadow);
+}
+
+html.conn-graph-root :global(.flow-proc-node.pcard.on) {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--cg-glass-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-soft) 80%, transparent),
+    var(--cg-glass-shadow);
 }

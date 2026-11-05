@@ -25,6 +25,7 @@
     padding: 8px 10px;
     cursor: grab;
     position: relative;
+    border-radius: 12px;
   }
 
   .flow-proc-node.dim {
