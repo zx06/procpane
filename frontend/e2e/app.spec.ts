@@ -381,3 +381,23 @@ test.describe("procpane settings (server build, /settings.html)", () => {
     expect(scrolled).toBe(true);
   });
 });
+
+test.describe("procpane conn graph (server build, /conn-graph.html)", () => {
+  test("smoke: connection graph page loads toolbar and table", async ({ page }) => {
+    await page.setViewportSize({ width: 960, height: 640 });
+    await page.goto("/conn-graph.html");
+
+    await expect(page.getByPlaceholder("进程名 / PID / 端口")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole("button", { name: "只看本地互联" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "隐藏浏览器类" })).toHaveCount(0);
+    const groupSelect = page.getByLabel("本地互联组");
+    if (await groupSelect.count()) {
+      await expect(groupSelect).toBeVisible();
+    }
+    await expect(page.getByText("TCP ESTABLISHED · 本机")).toBeVisible();
+    await expect(page.locator("table.cg-table")).toBeVisible();
+    await expect(page.locator(".svelte-flow")).toBeVisible();
+  });
+});

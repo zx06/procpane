@@ -28,6 +28,11 @@ func (s *Service) List(ctx context.Context, proto string) ([]model.Listener, err
 	return src.ListListeners(ctx)
 }
 
+// ListConnections returns local TCP ESTABLISHED connections for the connection graph window.
+func (s *Service) ListConnections(ctx context.Context) (model.ConnectionGraphResponse, error) {
+	return s.Source.ListConnections(ctx)
+}
+
 // Find matches port from user input (:8080, 8080, host:8080).
 func (s *Service) Find(ctx context.Context, spec string, proto string) ([]model.Listener, error) {
 	port, err := parsePortSpec(spec)

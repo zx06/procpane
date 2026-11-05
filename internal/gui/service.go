@@ -30,8 +30,9 @@ type ProcpaneService struct {
 	activeSource string
 	activeMu     sync.RWMutex
 
-	emitFn         func(name string, data ...any)
-	showSettingsFn func()
+	emitFn          func(name string, data ...any)
+	showSettingsFn  func()
+	showConnGraphFn func()
 }
 
 // SSHHostView is one OpenSSH alias for the GUI.
@@ -86,6 +87,11 @@ func (p *ProcpaneService) BindSettingsWindow(show func()) {
 	p.showSettingsFn = show
 }
 
+// BindConnGraphWindow wires the independent connection graph window opener (cmd/procpane-app).
+func (p *ProcpaneService) BindConnGraphWindow(show func()) {
+	p.showConnGraphFn = show
+}
+
 // BindEventEmitter wires Wails application.Event.Emit (set from cmd/procpane-app).
 func (p *ProcpaneService) BindEventEmitter(emit func(name string, data ...any)) {
 	p.emitFn = emit
@@ -127,6 +133,22 @@ func (p *ProcpaneService) OpenSettings() {
 	if p.showSettingsFn != nil {
 		p.showSettingsFn()
 	}
+}
+
+// OpenConnGraph shows the local TCP connection graph window (tray menu).
+func (p *ProcpaneService) OpenConnGraph() {
+	if p.showConnGraphFn != nil {
+		p.showConnGraphFn()
+	}
+}
+
+// ListLocalConnections returns enriched TCP ESTABLISHED rows for the connection graph UI.
+func (p *ProcpaneService) ListLocalConnections() (model.ConnectionGraphResponse, error) {
+	p.localMu.Lock()
+	defer p.localMu.Unlock()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	return p.svc.ListConnections(ctx)
 }
 
 // ListListeners returns enriched local LISTEN rows for the GUI.

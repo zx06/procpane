@@ -88,3 +88,35 @@ type ListResponse struct {
 	GeneratedAt time.Time  `json:"generatedAt"`
 	Listeners   []Listener `json:"listeners"`
 }
+
+// ConnDirection classifies a TCP ESTABLISHED row for the local connection graph.
+type ConnDirection string
+
+const (
+	ConnLocal    ConnDirection = "local"
+	ConnInbound  ConnDirection = "inbound"
+	ConnOutbound ConnDirection = "outbound"
+)
+
+// Connection is one enriched ESTABLISHED TCP socket on the local host.
+type Connection struct {
+	ID         string        `json:"id"`
+	Proto      Protocol      `json:"proto"`
+	Status     string        `json:"status"`
+	LocalHost  string        `json:"localHost"`
+	LocalPort  uint32        `json:"localPort"`
+	RemoteHost string        `json:"remoteHost"`
+	RemotePort uint32        `json:"remotePort"`
+	PID        int32         `json:"pid"`
+	Name       string        `json:"name"`
+	Cmdline    string        `json:"cmdline,omitempty"`
+	Direction  ConnDirection `json:"direction"`
+	PeerPID    int32         `json:"peerPid,omitempty"`
+	PeerName   string        `json:"peerName,omitempty"`
+}
+
+// ConnectionGraphResponse is the GUI/CLI envelope for local ESTABLISHED connections.
+type ConnectionGraphResponse struct {
+	GeneratedAt time.Time    `json:"generatedAt"`
+	Connections []Connection `json:"connections"`
+}

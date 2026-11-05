@@ -29,3 +29,12 @@ func (s *Source) ListListeners(ctx context.Context) ([]model.Listener, error) {
 	}
 	return enrich.EnrichListeners(raw), nil
 }
+
+// ListConnections scans TCP ESTABLISHED sockets and returns an enriched graph payload.
+func (s *Source) ListConnections(ctx context.Context) (model.ConnectionGraphResponse, error) {
+	raw, err := scan.ListRawConnections(ctx)
+	if err != nil {
+		return model.ConnectionGraphResponse{}, err
+	}
+	return enrich.BuildConnectionGraphResponse(raw), nil
+}
