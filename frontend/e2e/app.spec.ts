@@ -81,12 +81,29 @@ test.describe("procpane UI (server build)", () => {
     const sshEmptyList = sshPanel.getByText("没有 LISTEN 端口");
     const sshCards = sshPanel.locator(".cards-scroll .pcard");
 
-    await expect(empty.or(hostChip).or(sshEmptyList).or(sshCards.first())).toBeVisible({
-      timeout: 30_000,
-    });
+    await expect
+      .poll(
+        async () => {
+          if (await empty.isVisible().catch(() => false)) return "onboarding";
+          if (await hostChip.isVisible().catch(() => false)) return "hosts";
+          return null;
+        },
+        { timeout: 30_000 },
+      )
+      .not.toBeNull();
 
     if (await empty.isVisible().catch(() => false)) {
       await expect(settingsCta).toBeVisible();
+    } else {
+      await expect(hostChip).toBeVisible();
+      await expect
+        .poll(
+          async () =>
+            (await sshEmptyList.isVisible().catch(() => false)) ||
+            (await sshCards.first().isVisible().catch(() => false)),
+          { timeout: 30_000 },
+        )
+        .toBe(true);
     }
   });
 

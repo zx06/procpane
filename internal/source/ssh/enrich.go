@@ -12,14 +12,11 @@ import (
 
 const enrichMarker = "__procpane_pid__:"
 
-func enrichRemote(ctx context.Context, client *gossh.Client, _ string, listeners []model.Listener) {
+func pidsForCommEnrich(listeners []model.Listener) []int32 {
 	var pids []int32
 	seen := make(map[int32]struct{})
 	for i := range listeners {
 		if listeners[i].PID <= 0 {
-			continue
-		}
-		if listeners[i].Name != "" && listeners[i].Name != model.Unknown {
 			continue
 		}
 		if _, ok := seen[listeners[i].PID]; ok {
@@ -28,15 +25,26 @@ func enrichRemote(ctx context.Context, client *gossh.Client, _ string, listeners
 		seen[listeners[i].PID] = struct{}{}
 		pids = append(pids, listeners[i].PID)
 	}
-	if len(pids) == 0 {
-		return
-	}
-	names := batchRemoteComm(ctx, client, pids)
+	return pids
+}
+
+func applyCommNames(listeners []model.Listener, names map[int32]string) {
 	for i := range listeners {
 		if n, ok := names[listeners[i].PID]; ok && n != "" {
 			listeners[i].Name = n
 		}
 	}
+}
+
+// enrichRemote fills process names via batch ps comm. Scanner names are provisional
+// (BusyBox netstat truncates program fields); ps comm overwrites when available.
+func enrichRemote(ctx context.Context, client *gossh.Client, _ string, listeners []model.Listener) {
+	pids := pidsForCommEnrich(listeners)
+	if len(pids) == 0 {
+		return
+	}
+	names := batchRemoteComm(ctx, client, pids)
+	applyCommNames(listeners, names)
 }
 
 func batchRemoteComm(ctx context.Context, client *gossh.Client, pids []int32) map[int32]string {

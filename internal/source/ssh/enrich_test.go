@@ -21,22 +21,18 @@ func TestParseBatchCommOutput(t *testing.T) {
 	}
 }
 
-func TestEnrichRemoteSkipsNamedListeners(t *testing.T) {
+func TestEnrichRemoteOverwritesTruncatedNetstatName(t *testing.T) {
 	listeners := []model.Listener{
-		{PID: 1, Name: "nginx"},
+		{PID: 888, Name: "ssh_host_rsa_ke"},
 		{PID: 2, Name: model.Unknown},
 	}
-	var need []int32
-	for i := range listeners {
-		if listeners[i].PID <= 0 {
-			continue
-		}
-		if listeners[i].Name != "" && listeners[i].Name != model.Unknown {
-			continue
-		}
-		need = append(need, listeners[i].PID)
+	pids := pidsForCommEnrich(listeners)
+	if len(pids) != 2 || pids[0] != 888 || pids[1] != 2 {
+		t.Fatalf("pids=%v", pids)
 	}
-	if len(need) != 1 || need[0] != 2 {
-		t.Fatalf("need=%v", need)
+	names := map[int32]string{888: "sshd.pam", 2: "dhclient"}
+	applyCommNames(listeners, names)
+	if listeners[0].Name != "sshd.pam" || listeners[1].Name != "dhclient" {
+		t.Fatalf("listeners=%+v", listeners)
 	}
 }
