@@ -14,6 +14,9 @@ import (
 	"github.com/zx06/procpane/internal/version"
 )
 
+// autostartRegistrar is the OS hook used by SetAutostart/SyncAutostart (overridable in tests).
+var autostartRegistrar = autostart.SetEnabled
+
 // ProcpaneService exposes list/kill/show and v0.2 host sources to the Wails frontend.
 type ProcpaneService struct {
 	svc   *app.Service
@@ -297,7 +300,7 @@ func (p *ProcpaneService) SyncAutostart() error {
 	if err != nil {
 		return err
 	}
-	return autostart.SetEnabled(on)
+	return autostartRegistrar(on)
 }
 
 // SetAutostart toggles login autostart and updates OS registration immediately.
@@ -314,7 +317,7 @@ func (p *ProcpaneService) SetAutostart(on bool) error {
 	}
 	p.cfgMu.Unlock()
 
-	if err := autostart.SetEnabled(on); err != nil {
+	if err := autostartRegistrar(on); err != nil {
 		p.cfgMu.Lock()
 		_ = p.store.SetAutostart(prev)
 		p.cfgMu.Unlock()

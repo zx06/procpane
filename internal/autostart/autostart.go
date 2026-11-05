@@ -36,9 +36,9 @@ func resolveExecutable() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	exe, err = filepath.EvalSymlinks(exe)
-	if err != nil {
-		return "", err
+	// Go test binaries on Windows CI often lack a resolvable final path; Abs is enough for Run-key registration.
+	if resolved, symErr := filepath.EvalSymlinks(exe); symErr == nil {
+		exe = resolved
 	}
 	return filepath.Abs(exe)
 }
