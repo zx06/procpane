@@ -1,16 +1,35 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import RefreshButton from "./lib/RefreshButton.svelte";
-  import { listLocalConnections } from "./lib/api";
   import {
-    ConnGraphCanvas,
+    Background,
+    BackgroundVariant,
+    Controls,
+    MiniMap,
+    SvelteFlow,
+    type Edge,
+    type Node,
+  } from "@xyflow/svelte";
+  import "@xyflow/svelte/dist/style.css";
+  import RefreshButton from "./lib/RefreshButton.svelte";
+  import ConnGraphProcessNode from "./lib/ConnGraphProcessNode.svelte";
+  import ConnGraphStubNode from "./lib/ConnGraphStubNode.svelte";
+  import ConnGraphFitView from "./lib/ConnGraphFitView.svelte";
+  import { listLocalConnections } from "./lib/api";
+  import { buildFlowGraph } from "./lib/connGraphFlow";
+  import {
     connVisible,
     dirLabel,
+    namesByPidFrom,
     toUiConn,
     type GraphFilters,
     type GraphSelection,
     type UiConn,
   } from "./lib/connGraphEngine";
+
+  const nodeTypes = {
+    process: ConnGraphProcessNode,
+    stub: ConnGraphStubNode,
+  };
 
   let connections = $state<UiConn[]>([]);
   let loading = $state(true);
@@ -28,22 +47,16 @@
 
   let selection = $state<GraphSelection>({ selectedPid: null, selectedEdgeId: null });
 
-  let canvasEl: HTMLCanvasElement | undefined = $state();
-  let wrapEl: HTMLElement | undefined = $state();
-  let engine: ConnGraphCanvas | null = null;
+  let nodes = $state.raw<Node[]>([]);
+  let edges = $state.raw<Edge[]>([]);
+  let fitRevision = $state(0);
 
   function namesByPid(): Map<number, string> {
-    const m = new Map<number, string>();
-    for (const c of connections) {
-      m.set(c.pid, c.name);
-      if (c.peerPid) m.set(c.peerPid, c.peerName || "?");
-    }
-    return m;
+    return namesByPidFrom(connections);
   }
 
   function filteredTableRows(): UiConn[] {
-    const names = namesByPid();
-    return connections.filter((c) => connVisible(c, filters, names));
+    return connections.filter((c) => connVisible(c, filters, namesByPid()));
   }
 
   function sideRows(): UiConn[] {
@@ -61,6 +74,13 @@
     };
   }
 
+  function syncFlowGraph(fit = false) {
+    const built = buildFlowGraph(connections, filters, selection, nodes);
+    nodes = built.nodes;
+    edges = built.edges;
+    if (fit) fitRevision += 1;
+  }
+
   async function load() {
     refreshing = true;
     loadError = "";
@@ -68,7 +88,7 @@
       const res = await listLocalConnections();
       connections = res.connections.map(toUiConn);
       updatedAt = new Date(res.generatedAt).toLocaleTimeString("zh-CN", { hour12: false });
-      engine?.setData(connections, filters);
+      syncFlowGraph(true);
     } catch (e) {
       console.error(e);
       loadError = "加载连接失败";
@@ -86,37 +106,27 @@
       inOnly: key === "inOnly" ? next : false,
       outOnly: key === "outOnly" ? next : false,
     };
-    engine?.setData(connections, filters);
+    syncFlowGraph(true);
   }
 
   function toggleHideBrowser() {
     filters = { ...filters, hideBrowser: !filters.hideBrowser };
-    engine?.setData(connections, filters);
+    syncFlowGraph(true);
   }
 
   function onSearchInput(ev: Event) {
     filters = { ...filters, search: (ev.currentTarget as HTMLInputElement).value };
-    engine?.setData(connections, filters);
+    syncFlowGraph(true);
   }
 
   function selectPid(pid: number | null, edgeId: string | null = null) {
     selection = { selectedPid: pid, selectedEdgeId: edgeId };
-    engine?.setSelection(selection);
+    syncFlowGraph(false);
   }
 
   function selectRow(c: UiConn) {
     selectPid(c.pid, c.id);
   }
-
-  $effect(() => {
-    if (!canvasEl || !wrapEl || engine) return;
-    engine = new ConnGraphCanvas(canvasEl, wrapEl, (sel) => {
-      selection = sel;
-    });
-    engine.bindEvents();
-    if (connections.length) engine.setData(connections, filters);
-    return () => engine?.destroy();
-  });
 
   onMount(() => {
     void load();
@@ -176,8 +186,38 @@
   {/if}
 
   <div class="cg-body">
-    <div class="cg-graph-wrap" bind:this={wrapEl}>
-      <canvas bind:this={canvasEl}></canvas>
+    <div class="cg-graph-wrap cg-flow">
+      <SvelteFlow
+        bind:nodes
+        bind:edges
+        {nodeTypes}
+        nodesConnectable={false}
+        elementsSelectable={true}
+        minZoom={0.35}
+        maxZoom={2.5}
+        colorMode="system"
+        onnodeclick={({ node }) => {
+          if (node.type === "process" && node.data?.pid != null) {
+            selectPid(node.data.pid as number, null);
+          }
+        }}
+        onedgeclick={({ edge }) => {
+          const connId = (edge.data?.connId as string) ?? edge.id;
+          const row = connections.find((c) => c.id === connId);
+          selectPid(row?.pid ?? null, connId);
+        }}
+        onpaneclick={() => selectPid(null, null)}
+      >
+        <Background variant={BackgroundVariant.Dots} gap={18} size={1} />
+        <Controls showInteractive={false} />
+        <MiniMap
+          nodeStrokeWidth={2}
+          pannable
+          zoomable
+          class="cg-minimap"
+        />
+        <ConnGraphFitView revision={fitRevision} />
+      </SvelteFlow>
       <div class="cg-graph-hint">拖拽节点 · 滚轮缩放 · 点击选中</div>
     </div>
 

@@ -395,5 +395,6 @@ test.describe("procpane conn graph (server build, /conn-graph.html)", () => {
     await expect(page.getByText("本地互联").first()).toBeVisible();
     await expect(page.getByText("TCP ESTABLISHED · 本机")).toBeVisible();
     await expect(page.locator("table.cg-table")).toBeVisible();
+    await expect(page.locator(".svelte-flow")).toBeVisible();
   });
 });

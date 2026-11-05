@@ -157,15 +157,33 @@ html.conn-graph-root body {
   min-height: 0;
 }
 
-.cg-graph-wrap canvas {
-  display: block;
+.cg-flow :global(.svelte-flow) {
   width: 100%;
   height: 100%;
-  cursor: grab;
+  background: var(--pop);
 }
 
-.cg-graph-wrap canvas.dragging {
-  cursor: grabbing;
+.cg-flow :global(.svelte-flow__minimap.cg-minimap) {
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cg-flow :global(.svelte-flow__controls) {
+  box-shadow: none;
+  border: 1px solid var(--hair);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.cg-flow :global(.svelte-flow__controls-button) {
+  background: var(--pop-elev);
+  border-bottom: 1px solid var(--hair2);
+  fill: var(--text);
+}
+
+.cg-flow :global(.svelte-flow__controls-button:hover) {
+  background: var(--row-hover);
 }
 
 .cg-graph-hint {
