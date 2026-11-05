@@ -13,14 +13,16 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
+	<string>__PROCPANE_VERSION__</string>
 	<key>CFBundleVersion</key>
-	<string>0.1.0</string>
+	<string>__PROCPANE_VERSION__</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>11.0</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>procpane 需要通过本地网络连接 SSH 主机与 Docker，以列出远程监听端口。 / procpane needs local network access to reach SSH hosts and Docker on your LAN.</string>
 </dict>
 </plist>
