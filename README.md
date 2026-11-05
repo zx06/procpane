@@ -172,7 +172,7 @@ Maintainers tag semver releases on `main` (do not merge release PRs without revi
 
 **Not shipped (v1 release stream):** Linux arm64 GUI, macOS Intel/universal builds, Windows arm64 GUI, Apple notarization, MSI. GUI builds use `go build ./cmd/procpane-app` after `./scripts/build-frontend.sh` on each target OS (Wails Wake/Taskfile is not wired in this repo yet).
 
-Packaging helpers live under `scripts/release/` (`package-macos-gui.sh`, `procpane-windows-amd64.nsi`).
+Packaging helpers live under `scripts/release/` (`package-macos-gui.sh`, `procpane-windows-amd64.nsi`). The macOS `.app` bundles `NSLocalNetworkUsageDescription` and adhoc signing with `com.zx06.procpane` so Sequoia+ can grant Local Network access for SSH/Docker on your LAN.
 
 To exercise the workflow without publishing, run **Actions → Release → Run workflow** with **dry_run** enabled (build artifacts only).
 

@@ -15,6 +15,16 @@ procpane — macOS 安装说明
 3. 从「应用程序」或 Launchpad 正常打开 procpane。
 4. 若仍被拦截：在 procpane.app 上按住 Control 键并点按 → 选择「打开」→ 再点「打开」一次。
 
+本地网络（SSH / Docker 访问局域网主机）
+----------------------------------------
+
+若菜单栏 GUI 连接局域网主机（如 NAS 10.0.0.x）失败，提示「no route to host」或无法连接，
+而同一台 Mac 上终端里的 ssh 或 CLI `procpane ssh ls …` 正常，请检查：
+
+  系统设置 → 隐私与安全性 → 本地网络 → 打开 procpane 的开关。
+
+（macOS Sequoia 及更新版本对 GUI 应用访问局域网有单独权限；安装新版 procpane 后首次连 LAN 时也可能弹出授权提示。）
+
 说明
 ----
 
@@ -32,4 +42,6 @@ Install: drag procpane.app to Applications → run:
 
 Then open the app. If blocked, Control-click the app → Open once.
 
-Signed & notarized releases would normally skip this step.
+Local Network: if the tray GUI cannot reach LAN hosts (e.g. NAS) with “no route to host” while Terminal/CLI works, enable procpane under System Settings → Privacy & Security → Local Network.
+
+Signed & notarized releases would normally skip the xattr step.
