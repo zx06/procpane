@@ -248,8 +248,17 @@ body {
   transition: border-color 0.12s, box-shadow 0.12s;
 }
 
+.pcard.pcard-readonly {
+  cursor: default;
+}
+
 .pcard:hover {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--hair));
+}
+
+.pcard.pcard-readonly:hover {
+  border-color: var(--hair);
+  box-shadow: none;
 }
 
 .pcard.on {
@@ -712,6 +721,18 @@ body {
 
 .hint-bar.warn {
   color: var(--warn);
+}
+
+.link-btn {
+  margin-left: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
 }
 
 .host-chips {

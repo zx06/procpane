@@ -1,4 +1,8 @@
-import { getSettings, onSettingsChanged } from "./api";
+import {
+  getSettings,
+  onSettingsChanged,
+  type SettingsChangedPayload,
+} from "./api";
 
 export const DEFAULT_REFRESH_INTERVAL_SEC = 30;
 
@@ -18,6 +22,17 @@ export function watchRefreshInterval(
       onChange(sec * 1000);
     }
   });
+}
+
+/** True when settings payload should trigger an immediate panel reload. */
+export function settingsAffectsSource(
+  data: SettingsChangedPayload,
+  panel: "local" | "docker" | "ssh",
+): boolean {
+  if (data.refreshIntervalSec) return true;
+  if (panel === "docker" && data.dockerContext) return true;
+  if (panel === "ssh" && data.sshHosts) return true;
+  return false;
 }
 
 /** Footer label: last successful refresh as local clock time. */

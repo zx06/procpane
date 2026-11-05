@@ -48,6 +48,8 @@ func TestCollectRemoteAggregatesSeparateRuns(t *testing.T) {
 		t.Fatalf("raw=%+v", raw)
 	}
 	wantCalls := []string{
+		"sudo -n ss -H -ltnp 2>/dev/null",
+		"sudo -n ss -H -lunp 2>/dev/null",
 		"ss -H -ltnp 2>/dev/null",
 		"ss -H -lunp 2>/dev/null",
 		"lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null",

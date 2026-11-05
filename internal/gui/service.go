@@ -17,8 +17,16 @@ import (
 type ProcpaneService struct {
 	svc   *app.Service
 	store *config.Store
-	mu    sync.Mutex
 
+	localMu  sync.Mutex
+	dockerMu sync.Mutex
+	sshMu    sync.Mutex
+	cfgMu    sync.Mutex
+
+	activeSource string
+	activeMu     sync.RWMutex
+
+	emitFn         func(name string, data ...any)
 	showSettingsFn func()
 }
 
@@ -53,10 +61,10 @@ type DockerStatus struct {
 
 // SettingsView backs the independent settings window.
 type SettingsView struct {
-	StatePath          string         `json:"statePath"`
-	RefreshIntervalSec int            `json:"refreshIntervalSec"`
-	Docker             DockerStatus   `json:"docker"`
-	SSHHosts           []SSHHostView  `json:"sshHosts"`
+	StatePath          string        `json:"statePath"`
+	RefreshIntervalSec int           `json:"refreshIntervalSec"`
+	Docker             DockerStatus  `json:"docker"`
+	SSHHosts           []SSHHostView `json:"sshHosts"`
 }
 
 // NewService returns a Wails-bindable service.
@@ -65,12 +73,48 @@ func NewService() *ProcpaneService {
 	if err != nil {
 		store = &config.Store{}
 	}
-	return &ProcpaneService{svc: app.NewService(), store: store}
+	return &ProcpaneService{svc: app.NewService(), store: store, activeSource: "local"}
 }
 
 // BindSettingsWindow wires the independent settings window opener (set from cmd/procpane-app).
 func (p *ProcpaneService) BindSettingsWindow(show func()) {
 	p.showSettingsFn = show
+}
+
+// BindEventEmitter wires Wails application.Event.Emit (set from cmd/procpane-app).
+func (p *ProcpaneService) BindEventEmitter(emit func(name string, data ...any)) {
+	p.emitFn = emit
+}
+
+func (p *ProcpaneService) emit(name string, data ...any) {
+	if p.emitFn != nil {
+		p.emitFn(name, data...)
+	}
+}
+
+func (p *ProcpaneService) emitSettingsChanged(payload map[string]any) {
+	p.emit("procpane:settings-changed", payload)
+}
+
+// SetActiveSource records which tab is visible for tray “刷新当前源”.
+func (p *ProcpaneService) SetActiveSource(tab string) {
+	if tab == "" {
+		tab = "local"
+	}
+	p.activeMu.Lock()
+	p.activeSource = tab
+	p.activeMu.Unlock()
+}
+
+// RefreshCurrentSource emits a refresh event for the active tab (tray menu).
+func (p *ProcpaneService) RefreshCurrentSource() {
+	p.activeMu.RLock()
+	src := p.activeSource
+	p.activeMu.RUnlock()
+	if src == "" {
+		src = "local"
+	}
+	p.emit("procpane:refresh", map[string]string{"source": src})
 }
 
 // OpenSettings shows the settings window (tray menu or SSH empty-state CTA).
@@ -82,8 +126,8 @@ func (p *ProcpaneService) OpenSettings() {
 
 // ListListeners returns enriched local LISTEN rows for the GUI.
 func (p *ProcpaneService) ListListeners(proto string) ([]model.Listener, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.localMu.Lock()
+	defer p.localMu.Unlock()
 	if proto == "" {
 		proto = "all"
 	}
@@ -94,8 +138,8 @@ func (p *ProcpaneService) ListListeners(proto string) ([]model.Listener, error) 
 
 // ListDockerListeners returns published container ports (A1).
 func (p *ProcpaneService) ListDockerListeners() ([]model.Listener, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.dockerMu.Lock()
+	defer p.dockerMu.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	selected, _ := p.store.DockerContext()
@@ -105,15 +149,15 @@ func (p *ProcpaneService) ListDockerListeners() ([]model.Listener, error) {
 
 // DockerStatus probes the configured Engine endpoint.
 func (p *ProcpaneService) DockerStatus() DockerStatus {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.dockerMu.Lock()
+	defer p.dockerMu.Unlock()
 	return p.dockerStatusLocked()
 }
 
 // ListSSHHosts returns ssh_config aliases with enable flags.
 func (p *ProcpaneService) ListSSHHosts() ([]SSHHostView, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.cfgMu.Lock()
+	defer p.cfgMu.Unlock()
 	st, err := p.store.Load()
 	if err != nil {
 		return nil, err
@@ -136,8 +180,8 @@ func (p *ProcpaneService) ListSSHHosts() ([]SSHHostView, error) {
 
 // ListSSHListeners lists remote LISTEN for an enabled host alias.
 func (p *ProcpaneService) ListSSHListeners(alias string) ([]model.Listener, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.sshMu.Lock()
+	defer p.sshMu.Unlock()
 	on, err := p.store.IsSSHEnabled(alias)
 	if err != nil {
 		return nil, err
@@ -152,8 +196,8 @@ func (p *ProcpaneService) ListSSHListeners(alias string) ([]model.Listener, erro
 
 // GetSettings returns data for the settings window.
 func (p *ProcpaneService) GetSettings() (SettingsView, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.cfgMu.Lock()
+	defer p.cfgMu.Unlock()
 	st, err := p.store.Load()
 	if err != nil {
 		return SettingsView{}, err
@@ -210,29 +254,41 @@ func (p *ProcpaneService) dockerStatusLocked() DockerStatus {
 
 // SetDockerContext persists the Docker context name (empty clears to DOCKER_HOST behavior).
 func (p *ProcpaneService) SetDockerContext(name string) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.store.SetDockerContext(name)
+	p.cfgMu.Lock()
+	err := p.store.SetDockerContext(name)
+	p.cfgMu.Unlock()
+	if err == nil {
+		p.emitSettingsChanged(map[string]any{"dockerContext": true})
+	}
+	return err
 }
 
 // SetSSHEnabled toggles one SSH host alias in persisted state.
 func (p *ProcpaneService) SetSSHEnabled(alias string, enabled bool) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.store.SetSSHEnabled(alias, enabled)
+	p.cfgMu.Lock()
+	err := p.store.SetSSHEnabled(alias, enabled)
+	p.cfgMu.Unlock()
+	if err == nil {
+		p.emitSettingsChanged(map[string]any{"sshHosts": true})
+	}
+	return err
 }
 
 // SetRefreshIntervalSec persists the GUI auto-refresh interval for all tabs.
 func (p *ProcpaneService) SetRefreshIntervalSec(sec int) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.store.SetRefreshIntervalSec(sec)
+	p.cfgMu.Lock()
+	err := p.store.SetRefreshIntervalSec(sec)
+	p.cfgMu.Unlock()
+	if err == nil {
+		p.emitSettingsChanged(map[string]any{"refreshIntervalSec": sec})
+	}
+	return err
 }
 
 // KillProcess sends TERM or KILL after backend safety checks (local only).
 func (p *ProcpaneService) KillProcess(pid int32, signal string) (model.KillResult, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.localMu.Lock()
+	defer p.localMu.Unlock()
 	if signal == "" {
 		signal = "TERM"
 	}
@@ -245,8 +301,8 @@ func (p *ProcpaneService) KillProcess(pid int32, signal string) (model.KillResul
 
 // ShowProcess returns enriched metadata for a PID (parent chain drill-down).
 func (p *ProcpaneService) ShowProcess(pid int32) (model.ProcessInfo, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	p.localMu.Lock()
+	defer p.localMu.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	return p.svc.Show(ctx, pid), nil
