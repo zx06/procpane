@@ -327,6 +327,8 @@ test.describe("procpane settings (server build, /settings.html)", () => {
     await expect(page.getByRole("heading", { name: /procpane 设置/i })).toBeVisible({
       timeout: 30_000,
     });
+    await expect(page.getByRole("heading", { name: "常规", exact: true })).toBeVisible();
+    await expect(page.getByText("开机自启", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "自动刷新", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Docker", exact: true })).toBeVisible();
     await expect(page.locator("select.ctx-select").first()).toBeVisible();

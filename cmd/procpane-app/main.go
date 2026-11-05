@@ -92,6 +92,9 @@ func main() {
 	svc.BindEventEmitter(func(name string, data ...any) {
 		app.Event.Emit(name, data...)
 	})
+	if err := svc.SyncAutostart(); err != nil {
+		log.Printf("autostart sync: %v", err)
+	}
 
 	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		window.Hide()

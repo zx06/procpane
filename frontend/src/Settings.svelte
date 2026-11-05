@@ -5,6 +5,7 @@
     setSSHEnabled,
     setDockerContext,
     setRefreshIntervalSec,
+    setAutostart,
     emitSettingsChanged,
     type SettingsView,
   } from "./lib/api";
@@ -36,6 +37,23 @@
     } catch (e) {
       console.error(e);
       message = "保存失败";
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function onAutostartChange(ev: Event) {
+    const checked = (ev.currentTarget as HTMLInputElement).checked;
+    saving = true;
+    message = "";
+    try {
+      await setAutostart(checked);
+      await load();
+      message = "已保存";
+    } catch (e) {
+      console.error(e);
+      message = "保存失败";
+      await load();
     } finally {
       saving = false;
     }
@@ -87,10 +105,28 @@
 <div class="settings-app">
   <header class="settings-hd">
     <h1>procpane 设置</h1>
-    <p class="sub">自动刷新 · Docker 上下文 · SSH 主机</p>
+    <p class="sub">开机自启 · 自动刷新 · Docker · SSH</p>
   </header>
 
   {#if settings}
+    <section class="settings-block">
+      <h2>常规</h2>
+      <p class="hint">登录系统后自动启动 procpane 托盘（默认关闭）。</p>
+      <div class="readonly">
+        <div class="row">
+          <label class="toggle-row">
+            <input
+              type="checkbox"
+              checked={settings.autostart ?? false}
+              disabled={saving}
+              onchange={onAutostartChange}
+            />
+            <span class="k">开机自启</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
     <section class="settings-block">
       <h2>自动刷新</h2>
       <p class="hint">本机、Docker、SSH 标签页共用此间隔；手动 ↻ 仍为立即刷新。</p>
@@ -199,5 +235,17 @@
   .ctx-select:disabled {
     opacity: 0.55;
     cursor: not-allowed;
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    flex: 1;
+  }
+
+  .toggle-row input {
+    margin: 0;
   }
 </style>

@@ -27,7 +27,8 @@ type State struct {
 
 // GUIState holds cross-tab GUI preferences.
 type GUIState struct {
-	RefreshIntervalSec int `yaml:"refreshIntervalSec,omitempty"`
+	RefreshIntervalSec int  `yaml:"refreshIntervalSec,omitempty"`
+	Autostart          bool `yaml:"autostart,omitempty"`
 }
 
 // DockerState holds the selected Docker CLI context name (empty = DOCKER_HOST / local socket).
@@ -168,6 +169,25 @@ func (s *Store) SetRefreshIntervalSec(sec int) error {
 		return err
 	}
 	st.GUI.RefreshIntervalSec = sec
+	return s.Save(st)
+}
+
+// Autostart reports whether login autostart is enabled (default false).
+func (s *Store) Autostart() (bool, error) {
+	st, err := s.Load()
+	if err != nil {
+		return false, err
+	}
+	return st.GUI.Autostart, nil
+}
+
+// SetAutostart persists the login autostart preference.
+func (s *Store) SetAutostart(on bool) error {
+	st, err := s.Load()
+	if err != nil {
+		return err
+	}
+	st.GUI.Autostart = on
 	return s.Save(st)
 }
 
