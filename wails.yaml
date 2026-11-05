@@ -4,6 +4,6 @@ project:
   name: procpane
   product_name: procpane
   identifier: com.zx06.procpane
-  version: 0.2.2
+  version: 0.2.3
 build:
   tags: []
