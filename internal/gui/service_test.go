@@ -3,14 +3,18 @@ package gui
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
+
+	"github.com/zx06/procpane/internal/autostart"
 )
 
 func TestSetAutostartPersistsAndEmits(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	t.Setenv("PROCPANE_AUTOSTART_DIR", filepath.Join(dir, "autostart"))
+	t.Cleanup(func() { _ = autostart.SetEnabled(false) })
 
 	svc := NewService()
 	var got map[string]any
@@ -44,9 +48,17 @@ func TestSetAutostartPersistsAndEmits(t *testing.T) {
 		t.Fatal("expected autostart off")
 	}
 
-	desktop := filepath.Join(dir, "autostart", "procpane-app.desktop")
-	if _, err := os.Stat(desktop); !os.IsNotExist(err) {
-		t.Fatalf("desktop should be removed: %v", err)
+	switch runtime.GOOS {
+	case "linux":
+		desktop := filepath.Join(dir, "autostart", "procpane-app.desktop")
+		if _, err := os.Stat(desktop); !os.IsNotExist(err) {
+			t.Fatalf("desktop should be removed: %v", err)
+		}
+	case "windows":
+		ok, err := autostart.IsRegistered()
+		if err != nil || ok {
+			t.Fatalf("Run key should be cleared: registered=%v err=%v", ok, err)
+		}
 	}
 }
 
