@@ -40,7 +40,18 @@ Implement `ListListeners(ctx) ([]model.Listener, error)` for new hosts. CLI/GUI 
 | LISTEN tcp/udp | ESTABLISHED view |
 | Local host | Remote kill on docker/ssh |
 | Docker A1 + SSH B-go HostSources | hosts.yaml, LAN discovery |
-| Kill with confirm (local) | Autostart, alerts |
+| Kill with confirm (local) | Alerts |
+| Login autostart (Settings toggle → `internal/autostart`) | |
+
+## Autostart (GUI)
+
+Preference: `gui.autostart` in `~/.config/procpane/state.yaml` (default off). Toggling in Settings calls `internal/autostart.SetEnabled` immediately; app launch re-applies registration when enabled.
+
+| OS | Mechanism |
+|----|-----------|
+| Linux | XDG `~/.config/autostart/procpane-app.desktop` |
+| Windows | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` → `procpane` = path to `procpane-app.exe` |
+| macOS | `SMAppService.mainApp` (Swift helper); LaunchAgent plist fallback when SMAppService is unavailable |
 
 ## Decisions
 

@@ -80,6 +80,7 @@ export type DockerStatus = {
 export type SettingsView = {
   statePath: string;
   refreshIntervalSec: number;
+  autostart: boolean;
   docker: DockerStatus;
   sshHosts: SSHHostView[];
 };
@@ -118,6 +119,10 @@ export async function setDockerContext(name: string): Promise<void> {
 
 export async function setRefreshIntervalSec(sec: number): Promise<void> {
   return Call.ByName(`${svc}.SetRefreshIntervalSec`, sec);
+}
+
+export async function setAutostart(on: boolean): Promise<void> {
+  return Call.ByName(`${svc}.SetAutostart`, on);
 }
 
 export async function openSettings(): Promise<void> {
@@ -161,6 +166,7 @@ export async function setActiveSource(tab: SourceTab): Promise<void> {
 
 export type SettingsChangedPayload = {
   refreshIntervalSec?: number;
+  autostart?: boolean;
   dockerContext?: boolean;
   sshHosts?: boolean;
 };

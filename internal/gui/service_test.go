@@ -1,9 +1,54 @@
 package gui
 
 import (
+	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 )
+
+func TestSetAutostartPersistsAndEmits(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir)
+	t.Setenv("PROCPANE_AUTOSTART_DIR", filepath.Join(dir, "autostart"))
+
+	svc := NewService()
+	var got map[string]any
+	svc.BindEventEmitter(func(name string, data ...any) {
+		if name != "procpane:settings-changed" {
+			return
+		}
+		if len(data) == 1 {
+			if m, ok := data[0].(map[string]any); ok {
+				got = m
+			}
+		}
+	})
+
+	if err := svc.SetAutostart(true); err != nil {
+		t.Fatal(err)
+	}
+	view, err := svc.GetSettings()
+	if err != nil || !view.Autostart {
+		t.Fatalf("autostart=%v err=%v", view.Autostart, err)
+	}
+	if got["autostart"] != true {
+		t.Fatalf("emit=%v", got)
+	}
+
+	if err := svc.SetAutostart(false); err != nil {
+		t.Fatal(err)
+	}
+	view, _ = svc.GetSettings()
+	if view.Autostart {
+		t.Fatal("expected autostart off")
+	}
+
+	desktop := filepath.Join(dir, "autostart", "procpane-app.desktop")
+	if _, err := os.Stat(desktop); !os.IsNotExist(err) {
+		t.Fatalf("desktop should be removed: %v", err)
+	}
+}
 
 func TestRefreshCurrentSourceEmitsActiveTab(t *testing.T) {
 	svc := NewService()

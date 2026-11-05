@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/zx06/procpane/internal/app"
+	"github.com/zx06/procpane/internal/autostart"
 	"github.com/zx06/procpane/internal/config"
 	"github.com/zx06/procpane/internal/model"
 	dockersrc "github.com/zx06/procpane/internal/source/docker"
@@ -63,6 +64,7 @@ type DockerStatus struct {
 type SettingsView struct {
 	StatePath          string        `json:"statePath"`
 	RefreshIntervalSec int           `json:"refreshIntervalSec"`
+	Autostart          bool          `json:"autostart"`
 	Docker             DockerStatus  `json:"docker"`
 	SSHHosts           []SSHHostView `json:"sshHosts"`
 }
@@ -216,9 +218,11 @@ func (p *ProcpaneService) GetSettings() (SettingsView, error) {
 		})
 	}
 	refreshSec, _ := p.store.RefreshIntervalSec()
+	autostartOn, _ := p.store.Autostart()
 	return SettingsView{
 		StatePath:          p.store.Path(),
 		RefreshIntervalSec: refreshSec,
+		Autostart:          autostartOn,
 		Docker:             p.dockerStatusLocked(),
 		SSHHosts:           hostViews,
 	}, nil
@@ -283,6 +287,41 @@ func (p *ProcpaneService) SetRefreshIntervalSec(sec int) error {
 		p.emitSettingsChanged(map[string]any{"refreshIntervalSec": sec})
 	}
 	return err
+}
+
+// SyncAutostart applies persisted autostart to the OS (call once at app launch).
+func (p *ProcpaneService) SyncAutostart() error {
+	p.cfgMu.Lock()
+	on, err := p.store.Autostart()
+	p.cfgMu.Unlock()
+	if err != nil {
+		return err
+	}
+	return autostart.SetEnabled(on)
+}
+
+// SetAutostart toggles login autostart and updates OS registration immediately.
+func (p *ProcpaneService) SetAutostart(on bool) error {
+	p.cfgMu.Lock()
+	prev, err := p.store.Autostart()
+	if err != nil {
+		p.cfgMu.Unlock()
+		return err
+	}
+	if err := p.store.SetAutostart(on); err != nil {
+		p.cfgMu.Unlock()
+		return err
+	}
+	p.cfgMu.Unlock()
+
+	if err := autostart.SetEnabled(on); err != nil {
+		p.cfgMu.Lock()
+		_ = p.store.SetAutostart(prev)
+		p.cfgMu.Unlock()
+		return err
+	}
+	p.emitSettingsChanged(map[string]any{"autostart": on})
+	return nil
 }
 
 // KillProcess sends TERM or KILL after backend safety checks (local only).
