@@ -19,7 +19,8 @@
   source/local (v1)          source/docker|ssh (v0.2)
          │
          ├── scan.ListRawListeners
-         └── enrich.EnrichListeners
+         ├── scan.ListRawConnections (TCP ESTABLISHED, connection graph)
+         └── enrich.EnrichListeners / enrich.EnrichConnections
 ```
 
 ## Data flow (v1 local)
@@ -37,7 +38,8 @@ Implement `ListListeners(ctx) ([]model.Listener, error)` for new hosts. CLI/GUI 
 
 | In scope | Out of scope |
 |----------|----------------|
-| LISTEN tcp/udp | ESTABLISHED view |
+| LISTEN tcp/udp | ESTABLISHED on SSH/Docker HostSource |
+| Local TCP ESTABLISHED graph (standalone window) | PTR / reverse DNS for remote IPs |
 | Local host | Remote kill on docker/ssh |
 | Docker A1 + SSH B-go HostSources | hosts.yaml, LAN discovery |
 | Kill with confirm (local) | Alerts |

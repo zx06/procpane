@@ -13,6 +13,7 @@ export default defineConfig({
       input: {
         main: "index.html",
         settings: "settings.html",
+        "conn-graph": "conn-graph.html",
       },
     },
   },

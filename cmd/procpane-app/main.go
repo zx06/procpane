@@ -17,6 +17,8 @@ const (
 	windowHeight = 520
 	settingsW    = 420
 	settingsH    = 480
+	connGraphW   = 960
+	connGraphH   = 640
 )
 
 func main() {
@@ -86,8 +88,31 @@ func main() {
 		},
 	})
 
+	connGraphWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
+		Title:            "本地链路图 · procpane",
+		Width:            connGraphW,
+		Height:           connGraphH,
+		Name:             "conn-graph",
+		URL:              "/conn-graph.html",
+		Hidden:           true,
+		Frameless:        false,
+		AlwaysOnTop:      false,
+		HideOnEscape:     true,
+		BackgroundColour: application.NewRGB(242, 244, 248),
+		Mac: application.MacWindow{
+			Appearance: application.DefaultAppearance,
+		},
+		Windows: application.WindowsWindow{
+			HiddenOnTaskbar: false,
+			Theme:           application.SystemDefault,
+		},
+	})
+
 	svc.BindSettingsWindow(func() {
 		settingsWindow.Show()
+	})
+	svc.BindConnGraphWindow(func() {
+		connGraphWindow.Show()
 	})
 	svc.BindEventEmitter(func(name string, data ...any) {
 		app.Event.Emit(name, data...)
@@ -102,6 +127,10 @@ func main() {
 	})
 	settingsWindow.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		settingsWindow.Hide()
+		e.Cancel()
+	})
+	connGraphWindow.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
+		connGraphWindow.Hide()
 		e.Cancel()
 	})
 
@@ -123,6 +152,9 @@ func main() {
 	})
 	menu.Add("设置…").OnClick(func(_ *application.Context) {
 		settingsWindow.Show()
+	})
+	menu.Add("本地链路图…").OnClick(func(_ *application.Context) {
+		connGraphWindow.Show()
 	})
 	menu.AddSeparator()
 	menu.Add("退出 procpane").OnClick(func(_ *application.Context) {

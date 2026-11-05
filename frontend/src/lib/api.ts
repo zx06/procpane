@@ -85,6 +85,26 @@ export type SettingsView = {
   sshHosts: SSHHostView[];
 };
 
+export type Connection = {
+  id: string;
+  proto: string;
+  status: string;
+  localHost: string;
+  localPort: number;
+  remoteHost: string;
+  remotePort: number;
+  pid: number;
+  name: string;
+  direction: string;
+  peerPid?: number;
+  peerName?: string;
+};
+
+export type ConnectionGraphResponse = {
+  generatedAt: string;
+  connections: Connection[];
+};
+
 export async function listListeners(proto: string): Promise<Listener[]> {
   return Call.ByName(`${svc}.ListListeners`, proto || "all");
 }
@@ -127,6 +147,14 @@ export async function setAutostart(on: boolean): Promise<void> {
 
 export async function openSettings(): Promise<void> {
   return Call.ByName(`${svc}.OpenSettings`);
+}
+
+export async function openConnGraph(): Promise<void> {
+  return Call.ByName(`${svc}.OpenConnGraph`);
+}
+
+export async function listLocalConnections(): Promise<ConnectionGraphResponse> {
+  return Call.ByName(`${svc}.ListLocalConnections`);
 }
 
 export async function showProcess(pid: number): Promise<ProcessInfo> {
