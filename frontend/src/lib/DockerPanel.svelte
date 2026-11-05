@@ -154,7 +154,7 @@
   {/if}
 
   <div class="tools">
-    <div class="search">
+    <div class="search m3-ctrl">
       <input type="search" placeholder="容器 / 端口 / 镜像…" bind:value={query} />
     </div>
     <RefreshButton spinning={refreshing} onclick={() => doRefresh()} />
@@ -164,7 +164,7 @@
     {#if cards.length > 0}
       <div class="cards">
         {#each cards as card (card.id)}
-          <div class="pcard docker-card pcard-readonly">
+          <div class="pcard m3-card docker-card pcard-readonly">
             <div class="pcard-top">
               <div class="pcard-ports">
                 {#each card.ports as p (p.port + p.proto)}

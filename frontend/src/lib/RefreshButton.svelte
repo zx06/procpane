@@ -5,7 +5,7 @@
 
 <button
   type="button"
-  class="icon-btn"
+  class="icon-btn m3-ctrl"
   class:spin={spinning}
   title="刷新"
   aria-label="刷新"

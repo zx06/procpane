@@ -31,18 +31,18 @@
     height: 14px;
     border-radius: 50%;
     background: rgba(100, 116, 139, 0.16);
-    border: 1px solid var(--stub);
+    border: 1px solid var(--color-stub-edge);
   }
 
   .flow-stub.in .dot {
-    background: var(--ok-soft);
-    border-color: var(--in-edge);
+    background: var(--color-ok-soft);
+    border-color: var(--color-in-edge);
   }
 
   .label {
-    font-family: var(--mono);
+    font-family: var(--font-mono);
     font-size: 9px;
-    color: var(--muted);
+    color: var(--color-muted);
     max-width: 120px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -55,7 +55,7 @@
     height: 6px !important;
     min-width: 6px !important;
     min-height: 6px !important;
-    background: var(--hair) !important;
-    border: 1px solid var(--muted) !important;
+    background: var(--color-hair2) !important;
+    border: 1px solid var(--color-muted) !important;
   }
 </style>

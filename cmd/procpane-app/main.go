@@ -21,6 +21,21 @@ const (
 	connGraphH   = 640
 )
 
+func m3GlassWindow() application.WebviewWindowOptions {
+	return application.WebviewWindowOptions{
+		BackgroundType:   application.BackgroundTypeTranslucent,
+		BackgroundColour: application.NewRGBA(0, 0, 0, 0),
+		Mac: application.MacWindow{
+			Appearance: application.DefaultAppearance,
+			Backdrop:   application.MacBackdropTranslucent,
+		},
+		Windows: application.WindowsWindow{
+			Theme:        application.SystemDefault,
+			BackdropType: application.Acrylic,
+		},
+	}
+}
+
 func main() {
 	svc := gui.NewService()
 
@@ -47,6 +62,7 @@ func main() {
 	})
 
 	tray := app.SystemTray.New()
+	mainGlass := m3GlassWindow()
 	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            "procpane",
 		Width:            windowWidth,
@@ -58,16 +74,20 @@ func main() {
 		AlwaysOnTop:      true,
 		HideOnEscape:     true,
 		HideOnFocusLost:  true,
-		BackgroundColour: application.NewRGB(242, 244, 248),
+		BackgroundType:   mainGlass.BackgroundType,
+		BackgroundColour: mainGlass.BackgroundColour,
 		Mac: application.MacWindow{
-			Appearance: application.DefaultAppearance,
+			Appearance: mainGlass.Mac.Appearance,
+			Backdrop:   mainGlass.Mac.Backdrop,
 		},
 		Windows: application.WindowsWindow{
 			HiddenOnTaskbar: true,
-			Theme:           application.SystemDefault,
+			Theme:           mainGlass.Windows.Theme,
+			BackdropType:    mainGlass.Windows.BackdropType,
 		},
 	})
 
+	settingsGlass := m3GlassWindow()
 	settingsWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            "procpane — 设置",
 		Width:            settingsW,
@@ -78,16 +98,20 @@ func main() {
 		Frameless:        false,
 		AlwaysOnTop:      false,
 		HideOnEscape:     true,
-		BackgroundColour: application.NewRGB(242, 244, 248),
+		BackgroundType:   settingsGlass.BackgroundType,
+		BackgroundColour: settingsGlass.BackgroundColour,
 		Mac: application.MacWindow{
-			Appearance: application.DefaultAppearance,
+			Appearance: settingsGlass.Mac.Appearance,
+			Backdrop:   settingsGlass.Mac.Backdrop,
 		},
 		Windows: application.WindowsWindow{
 			HiddenOnTaskbar: false,
-			Theme:           application.SystemDefault,
+			Theme:           settingsGlass.Windows.Theme,
+			BackdropType:    settingsGlass.Windows.BackdropType,
 		},
 	})
 
+	connGlass := m3GlassWindow()
 	connGraphWindow := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:            "本地链路图 · procpane",
 		Width:            connGraphW,
@@ -98,13 +122,16 @@ func main() {
 		Frameless:        false,
 		AlwaysOnTop:      false,
 		HideOnEscape:     false,
-		BackgroundColour: application.NewRGB(242, 244, 248),
+		BackgroundType:   connGlass.BackgroundType,
+		BackgroundColour: connGlass.BackgroundColour,
 		Mac: application.MacWindow{
-			Appearance: application.DefaultAppearance,
+			Appearance: connGlass.Mac.Appearance,
+			Backdrop:   connGlass.Mac.Backdrop,
 		},
 		Windows: application.WindowsWindow{
 			HiddenOnTaskbar: false,
-			Theme:           application.SystemDefault,
+			Theme:           connGlass.Windows.Theme,
+			BackdropType:    connGlass.Windows.BackdropType,
 		},
 	})
 

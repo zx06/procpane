@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import tailwindcss from "@tailwindcss/vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 
 export default defineConfig({
@@ -7,7 +8,7 @@ export default defineConfig({
     port: Number(process.env.WAILS_VITE_PORT) || 9245,
     strictPort: true,
   },
-  plugins: [svelte()],
+  plugins: [tailwindcss(), svelte()],
   build: {
     rollupOptions: {
       input: {

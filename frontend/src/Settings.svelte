@@ -102,7 +102,7 @@
   });
 </script>
 
-<div class="settings-app">
+<div class="settings-app m3-surface">
   <header class="settings-hd">
     <h1>procpane 设置</h1>
     <p class="sub">开机自启 · 自动刷新 · Docker · SSH</p>
@@ -227,9 +227,9 @@
     font-size: 12px;
     padding: 4px 8px;
     border-radius: 6px;
-    border: 1px solid var(--hair);
-    background: var(--pop-elev);
-    color: var(--text);
+    border: 1px solid var(--color-hair2);
+    background: var(--color-ctrl-solid);
+    color: var(--color-fg);
   }
 
   .ctx-select:disabled {
