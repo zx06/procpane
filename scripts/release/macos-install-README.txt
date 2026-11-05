@@ -45,3 +45,21 @@ Then open the app. If blocked, Control-click the app → Open once.
 Local Network: if the tray GUI cannot reach LAN hosts (e.g. NAS) with “no route to host” while Terminal/CLI works, enable procpane under System Settings → Privacy & Security → Local Network.
 
 Signed & notarized releases would normally skip the xattr step.
+
+登录时自动启动（设置 → 登录时启动）
+------------------------------------
+
+在 procpane 设置中打开「登录时启动」后，系统会在
+~/Library/LaunchAgents/com.zx06.procpane.plist 注册启动项，登录项中应显示 procpane（而非其他进程名）。
+
+若您曾使用 v0.2.2 并看到错误的「swift-frontend」登录项：请先在
+系统设置 → 通用 → 登录项 中删除「swift-frontend」，再在 procpane 中关闭并重新打开「登录时启动」。
+
+---
+Autostart (Settings → launch at login)
+
+Enabling autostart installs ~/Library/LaunchAgents/com.zx06.procpane.plist pointing at your
+procpane.app binary; Login Items should list procpane.
+
+If v0.2.2 left a stray "swift-frontend" login item: remove it under System Settings → General →
+Login Items, then toggle autostart off and on again in procpane.

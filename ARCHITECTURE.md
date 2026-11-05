@@ -51,7 +51,7 @@ Preference: `gui.autostart` in `~/.config/procpane/state.yaml` (default off). To
 |----|-----------|
 | Linux | XDG `~/.config/autostart/procpane-app.desktop` |
 | Windows | `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` → `procpane` = path to `procpane-app.exe` |
-| macOS | `SMAppService.mainApp` (Swift helper); LaunchAgent plist fallback when SMAppService is unavailable |
+| macOS | User LaunchAgent `~/Library/LaunchAgents/com.zx06.procpane.plist` (`ProgramArguments` = path to `procpane.app` binary); `launchctl bootstrap` / `bootout` on toggle |
 
 ## Decisions
 

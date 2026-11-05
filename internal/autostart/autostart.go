@@ -3,7 +3,7 @@
 // Platform behavior:
 //   - Linux: XDG autostart desktop file in ~/.config/autostart/procpane-app.desktop
 //   - Windows: HKCU\Software\Microsoft\Windows\CurrentVersion\Run value "procpane" (standard per-user Run key for tray apps)
-//   - macOS: SMAppService.mainApp via a short swift helper (Login Items, no Dock icon; requires distributed .app with com.zx06.procpane)
+//   - macOS: user LaunchAgent plist ~/Library/LaunchAgents/com.zx06.procpane.plist → installed .app binary (Login Items shows procpane)
 package autostart
 
 import (
