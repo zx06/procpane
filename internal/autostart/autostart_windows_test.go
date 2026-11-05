@@ -7,6 +7,7 @@ import (
 )
 
 func TestWindowsAutostartEnableDisable(t *testing.T) {
+	t.Setenv("PROCPANE_AUTOSTART_RUN_KEY", `Software\procpane-test\Autostart`)
 	t.Cleanup(func() { _ = setEnabledPlatform(false, "") })
 
 	exe := `C:\Program Files\procpane\procpane-app.exe`
@@ -28,6 +29,7 @@ func TestWindowsAutostartEnableDisable(t *testing.T) {
 }
 
 func TestSetEnabledUsesExecutable(t *testing.T) {
+	t.Setenv("PROCPANE_AUTOSTART_RUN_KEY", `Software\procpane-test\SetEnabled`)
 	t.Cleanup(func() { _ = SetEnabled(false) })
 
 	if err := SetEnabled(true); err != nil {

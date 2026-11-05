@@ -3,13 +3,23 @@
 package autostart
 
 import (
+	"errors"
+	"os"
+
 	"golang.org/x/sys/windows/registry"
 )
 
-const winRunKey = `Software\Microsoft\Windows\CurrentVersion\Run`
+const defaultWinRunKey = `Software\Microsoft\Windows\CurrentVersion\Run`
+
+func winRunKeyPath() string {
+	if override := os.Getenv("PROCPANE_AUTOSTART_RUN_KEY"); override != "" {
+		return override
+	}
+	return defaultWinRunKey
+}
 
 func setEnabledPlatform(on bool, exe string) error {
-	k, err := registry.OpenKey(registry.CURRENT_USER, winRunKey, registry.SET_VALUE)
+	k, _, err := registry.CreateKey(registry.CURRENT_USER, winRunKeyPath(), registry.SET_VALUE)
 	if err != nil {
 		return err
 	}
@@ -26,8 +36,11 @@ func setEnabledPlatform(on bool, exe string) error {
 
 // IsRegistered reports whether the Run key entry exists.
 func IsRegistered() (bool, error) {
-	k, err := registry.OpenKey(registry.CURRENT_USER, winRunKey, registry.QUERY_VALUE)
+	k, err := registry.OpenKey(registry.CURRENT_USER, winRunKeyPath(), registry.QUERY_VALUE)
 	if err != nil {
+		if errors.Is(err, registry.ErrNotExist) {
+			return false, nil
+		}
 		return false, err
 	}
 	defer k.Close()

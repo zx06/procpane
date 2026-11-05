@@ -14,6 +14,9 @@ func TestSetAutostartPersistsAndEmits(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", dir)
 	t.Setenv("PROCPANE_AUTOSTART_DIR", filepath.Join(dir, "autostart"))
+	if runtime.GOOS == "windows" {
+		t.Setenv("PROCPANE_AUTOSTART_RUN_KEY", `Software\procpane-test\GuiService`)
+	}
 	t.Cleanup(func() { _ = autostart.SetEnabled(false) })
 
 	svc := NewService()
