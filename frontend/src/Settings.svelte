@@ -134,7 +134,7 @@
         <div class="row">
           <span class="k">间隔</span>
           <select
-            class="ctx-select"
+            class="ctx-select m3-ctrl"
             disabled={saving}
             value={String(settings.refreshIntervalSec ?? 30)}
             onchange={onRefreshIntervalChange}
@@ -153,7 +153,7 @@
         <div class="row">
           <span class="k">Context</span>
           <select
-            class="ctx-select"
+            class="ctx-select m3-ctrl"
             disabled={saving}
             value={settings.docker.selectedContext ?? ""}
             onchange={onDockerContextChange}
@@ -226,9 +226,6 @@
     font-family: inherit;
     font-size: 12px;
     padding: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid var(--color-hair2);
-    background: var(--color-ctrl-solid);
     color: var(--color-fg);
   }
 

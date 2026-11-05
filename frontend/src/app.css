@@ -17,8 +17,6 @@
   --color-ctrl-glass: rgb(255 255 255 / 0.45);
   --color-ctrl-solid: #e8e8e8;
   --color-inset: rgb(0 0 0 / 0.04);
-  --color-avatar: #e0e0e0;
-  --color-port: #ececec;
 
   --color-pill-bg: rgb(26 26 26 / 0.78);
   --color-pill-fg: #ffffff;
@@ -30,10 +28,11 @@
   --color-edge: rgb(255 255 255 / 0.55);
   --color-inset-highlight: rgb(255 255 255 / 0.65);
 
-  --color-warn: #c2410c;
-  --color-danger: #e11d48;
-  --color-danger-bg: rgb(225 29 72 / 0.1);
-  --color-ok: #059669;
+  /* Semantic (functional only — muted for M3 mono chrome) */
+  --color-warn: #7a6548;
+  --color-danger: #9e4a4a;
+  --color-danger-bg: rgb(158 74 74 / 0.12);
+  --color-ok: #5a735a;
 
   --color-overlay: rgb(20 24 32 / 0.28);
   --color-row-hover: rgb(0 0 0 / 0.035);
@@ -59,8 +58,6 @@
     --color-ctrl-glass: rgb(255 255 255 / 0.1);
     --color-ctrl-solid: #333333;
     --color-inset: rgb(0 0 0 / 0.28);
-    --color-avatar: #3a3a3a;
-    --color-port: #333333;
 
     --color-pill-bg: rgb(245 245 247 / 0.88);
     --color-pill-fg: #1a1a1a;
@@ -72,10 +69,10 @@
     --color-edge: rgb(255 255 255 / 0.18);
     --color-inset-highlight: rgb(255 255 255 / 0.12);
 
-    --color-warn: #ff9f0a;
-    --color-danger: #ff453a;
-    --color-danger-bg: rgb(255 69 58 / 0.16);
-    --color-ok: #30d158;
+    --color-warn: #b8a078;
+    --color-danger: #c97878;
+    --color-danger-bg: rgb(201 120 120 / 0.16);
+    --color-ok: #8aab88;
 
     --color-overlay: rgb(0 0 0 / 0.45);
     --color-row-hover: rgb(255 255 255 / 0.05);
@@ -115,6 +112,23 @@
     background: transparent;
     color: var(--color-fg);
     overflow: hidden;
+  }
+
+  .icon-btn:focus-visible,
+  .btn:focus-visible,
+  .cg-chip:focus-visible,
+  .search input:focus-visible,
+  .cg-search input:focus-visible,
+  .ctx-select:focus-visible,
+  .mini-seg button:focus-visible,
+  .source-tabs button:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-fg) 50%, transparent);
+    outline-offset: 2px;
+  }
+
+  .search input:focus-visible,
+  .cg-search input:focus-visible {
+    outline-offset: 0;
   }
 }
 
@@ -606,6 +620,13 @@
 
   .empty {
     padding: 40px 16px;
+    text-align: center;
+    color: var(--color-muted);
+    font-size: 12px;
+  }
+
+  .loading {
+    padding: 24px 16px;
     text-align: center;
     color: var(--color-muted);
     font-size: 12px;

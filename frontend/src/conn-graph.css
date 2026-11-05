@@ -1,12 +1,16 @@
-/* Graph-only functional hues (edges / legend / node local ring) */
-@theme {
+/*
+ * Graph functional hues (plain :root — this file is not Tailwind-processed).
+ * Local purple edges/nodes: intentional exception to M3 mono chrome.
+ * In/out edges: muted green-gray / slate (direction only, not brand accent).
+ */
+:root {
   --color-local: #7c3aed;
   --color-local-soft: rgb(124 58 237 / 0.14);
   --color-local-edge: #a78bfa;
-  --color-in-edge: #059669;
-  --color-out-edge: #64748b;
+  --color-in-edge: #5a6b62;
+  --color-out-edge: #6b7280;
   --color-stub-edge: #94a3b8;
-  --color-ok-soft: rgb(5 150 105 / 0.12);
+  --color-ok-soft: rgb(90 107 98 / 0.14);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -14,10 +18,10 @@
     --color-local: #bf5af2;
     --color-local-soft: rgb(191 90 242 / 0.2);
     --color-local-edge: #d8b4fe;
-    --color-in-edge: #30d158;
-    --color-out-edge: #94a3b8;
+    --color-in-edge: #9aaa96;
+    --color-out-edge: #949aa4;
     --color-stub-edge: #64748b;
-    --color-ok-soft: rgb(48 209 88 / 0.16);
+    --color-ok-soft: rgb(154 170 150 / 0.18);
   }
 }
 
@@ -184,14 +188,6 @@
   .cg-legend i.l-local {
     border-color: var(--color-local-edge);
     border-top-width: 3px;
-  }
-
-  .cg-legend i.l-in {
-    border-color: var(--color-in-edge);
-  }
-
-  .cg-legend i.l-out {
-    border-color: var(--color-out-edge);
   }
 
   .cg-legend-note {
