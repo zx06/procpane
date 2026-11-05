@@ -51,7 +51,14 @@ func (s *Source) ListListeners(ctx context.Context) ([]model.Listener, error) {
 	}
 	touchSSHClient(entry.Alias)
 	listeners := rawToListeners(s.HostAlias, raw)
-	enrichRemote(ctx, client, tool, listeners)
+	if enrichRemote(ctx, client, tool, listeners) {
+		dropSSHClient(entry.Alias)
+		if client2, dialErr := acquireSSHClient(ctx, entry); dialErr == nil {
+			client = client2
+			enrichRemote(ctx, client, tool, listeners)
+			touchSSHClient(entry.Alias)
+		}
+	}
 	return listeners, nil
 }
 
@@ -255,7 +262,9 @@ func runRemote(ctx context.Context, client *gossh.Client, cmd string) (string, e
 }
 
 func runRemoteEnrich(ctx context.Context, client *gossh.Client, cmd string) (string, error) {
-	return runRemoteOnce(ctx, client, cmd)
+	return retryRemoteOutput(remoteEmptyOutputAttempts, func() (string, error) {
+		return runRemoteOnce(ctx, client, cmd)
+	})
 }
 
 func runRemoteOnce(ctx context.Context, client *gossh.Client, cmd string) (string, error) {

@@ -38,22 +38,32 @@ func applyCommNames(listeners []model.Listener, names map[int32]string) {
 
 // enrichRemote fills process names via batch ps comm. Scanner names are provisional
 // (BusyBox netstat truncates program fields); ps comm overwrites when available.
-func enrichRemote(ctx context.Context, client *gossh.Client, _ string, listeners []model.Listener) {
+// Returns true when PIDs needed enrich but no comm lines were parsed (empty remote
+// stdout after retries), so the caller may redial and retry once.
+func enrichRemote(ctx context.Context, client *gossh.Client, _ string, listeners []model.Listener) bool {
 	pids := pidsForCommEnrich(listeners)
 	if len(pids) == 0 {
-		return
+		return false
 	}
 	names := batchRemoteComm(ctx, client, pids)
 	applyCommNames(listeners, names)
+	return len(names) == 0
 }
 
 func batchRemoteComm(ctx context.Context, client *gossh.Client, pids []int32) map[int32]string {
+	return batchRemoteCommWithRun(ctx, pids, func(cmd string) (string, error) {
+		return runRemoteEnrich(ctx, client, cmd)
+	})
+}
+
+func batchRemoteCommWithRun(ctx context.Context, pids []int32, run func(string) (string, error)) map[int32]string {
+	_ = ctx
 	out := make(map[int32]string, len(pids))
 	var b strings.Builder
 	for _, pid := range pids {
 		fmt.Fprintf(&b, "echo '%s%d'; ps -p %d -o comm= 2>/dev/null || true; echo\n", enrichMarker, pid, pid)
 	}
-	raw, err := runRemoteEnrich(ctx, client, b.String())
+	raw, err := run(b.String())
 	if err != nil {
 		return out
 	}

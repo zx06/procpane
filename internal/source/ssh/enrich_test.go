@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -18,6 +19,30 @@ func TestParseBatchCommOutput(t *testing.T) {
 	out := parseBatchCommOutput(raw)
 	if out[100] != "node" || out[200] != "sshd" {
 		t.Fatalf("out=%v", out)
+	}
+}
+
+func TestBatchRemoteCommRetriesEmptyEnrichOutput(t *testing.T) {
+	var n int
+	run := func(cmd string) (string, error) {
+		return retryRemoteOutput(remoteEmptyOutputAttempts, func() (string, error) {
+			n++
+			if n < 2 {
+				return "", nil
+			}
+			return strings.Join([]string{
+				enrichMarker + "197",
+				"sshd.pam",
+				"",
+			}, "\n"), nil
+		})
+	}
+	names := batchRemoteCommWithRun(context.Background(), []int32{197}, run)
+	if names[197] != "sshd.pam" {
+		t.Fatalf("names=%v", names)
+	}
+	if n != 2 {
+		t.Fatalf("attempts=%d want 2", n)
 	}
 }
 
