@@ -50,9 +50,11 @@
     localOnly: false,
     inOnly: false,
     outOnly: false,
-    hideBrowser: true,
     search: "",
   });
+
+  /** Last component id we ran dagre layout for (preserve drag within same group). */
+  let layoutComponentId = $state<string | null>(null);
 
   let selection = $state<GraphSelection>({ selectedPid: null, selectedEdgeId: null });
 
@@ -95,16 +97,27 @@
   }
 
   function recomputeComponents(remember = true) {
-    localComponents = buildLocalComponents(connections, filters.hideBrowser);
+    localComponents = buildLocalComponents(connections);
     const prev = remember ? activeComponentId ?? loadRememberedComponentId() : null;
     activeComponentId = pickDefaultComponentId(localComponents, prev);
     rememberComponentId(activeComponentId);
   }
 
-  function syncFlowGraph(fit = false) {
-    const built = buildFlowGraph(connections, activeComponent(), selection, nodes);
+  function syncFlowGraph(opts?: { fit?: boolean; relayout?: boolean }) {
+    const fit = opts?.fit ?? false;
+    const relayout =
+      opts?.relayout ??
+      (activeComponentId !== layoutComponentId || nodes.length === 0);
+    const built = buildFlowGraph(
+      connections,
+      activeComponent(),
+      selection,
+      relayout ? [] : nodes,
+      { relayout },
+    );
     nodes = built.nodes;
     edges = built.edges;
+    if (relayout && activeComponentId) layoutComponentId = activeComponentId;
     if (fit) fitRevision += 1;
   }
 
@@ -113,7 +126,8 @@
     activeComponentId = id;
     rememberComponentId(id);
     selection = { selectedPid: null, selectedEdgeId: null };
-    syncFlowGraph(fit);
+    layoutComponentId = null;
+    syncFlowGraph({ fit, relayout: true });
   }
 
   async function load() {
@@ -124,7 +138,8 @@
       connections = res.connections.map(toUiConn);
       updatedAt = new Date(res.generatedAt).toLocaleTimeString("zh-CN", { hour12: false });
       recomputeComponents(true);
-      syncFlowGraph(true);
+      layoutComponentId = null;
+      syncFlowGraph({ fit: true, relayout: true });
     } catch (e) {
       console.error(e);
       loadError = "加载连接失败";
@@ -142,18 +157,12 @@
       inOnly: key === "inOnly" ? next : false,
       outOnly: key === "outOnly" ? next : false,
     };
-    syncFlowGraph(false);
-  }
-
-  function toggleHideBrowser() {
-    filters = { ...filters, hideBrowser: !filters.hideBrowser };
-    recomputeComponents(true);
-    syncFlowGraph(true);
+    syncFlowGraph({ relayout: false });
   }
 
   function onSearchInput(ev: Event) {
     filters = { ...filters, search: (ev.currentTarget as HTMLInputElement).value };
-    syncFlowGraph(false);
+    syncFlowGraph({ relayout: false });
   }
 
   function onGroupChange(ev: Event) {
@@ -163,7 +172,7 @@
 
   function selectPid(pid: number | null, edgeId: string | null = null) {
     selection = { selectedPid: pid, selectedEdgeId: edgeId };
-    syncFlowGraph(false);
+    syncFlowGraph({ relayout: false });
   }
 
   function selectRow(c: UiConn) {
@@ -231,12 +240,6 @@
         class="cg-chip"
         class:on={filters.outOnly}
         onclick={() => toggleDirection("outOnly")}>只看出站</button
-      >
-      <button
-        type="button"
-        class="cg-chip"
-        class:on={filters.hideBrowser}
-        onclick={toggleHideBrowser}>隐藏浏览器类</button
       >
     </div>
     <RefreshButton spinning={refreshing} onclick={() => load()} />

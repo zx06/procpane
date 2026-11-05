@@ -391,7 +391,7 @@ test.describe("procpane conn graph (server build, /conn-graph.html)", () => {
       timeout: 30_000,
     });
     await expect(page.getByRole("button", { name: "只看本地互联" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "隐藏浏览器类" })).toHaveClass(/on/);
+    await expect(page.getByRole("button", { name: "隐藏浏览器类" })).toHaveCount(0);
     const groupSelect = page.getByLabel("本地互联组");
     if (await groupSelect.count()) {
       await expect(groupSelect).toBeVisible();

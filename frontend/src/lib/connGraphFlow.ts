@@ -1,3 +1,4 @@
+import Dagre from "@dagrejs/dagre";
 import { MarkerType, type Edge, type Node } from "@xyflow/svelte";
 import { dirCssVar, namesByPidFrom, type GraphSelection, type UiConn } from "./connGraphEngine";
 import type { LocalComponent } from "./connGraphClusters";
@@ -9,6 +10,10 @@ export type ProcessNodeData = {
   hasLocal: boolean;
   dimmed: boolean;
 };
+
+/** Match ConnGraphProcessNode card (dagre uses center anchor; xyflow uses top-left). */
+const PROC_NODE_W = 112;
+const PROC_NODE_H = 54;
 
 function resolvedStrokeLocal(): string {
   const fallback = "#7c3aed";
@@ -47,33 +52,45 @@ function procRelated(pid: number, edges: UiConn[], selection: GraphSelection): b
   return false;
 }
 
-function layoutPosition(
-  index: number,
-  total: number,
-  cx: number,
-  cy: number,
-): { x: number; y: number } {
-  if (total <= 8) {
-    const radius = Math.min(280, 72 + total * 22);
-    const angle = (index / Math.max(total, 1)) * Math.PI * 2 - Math.PI / 2;
-    return {
-      x: cx + Math.cos(angle) * radius,
-      y: cy + Math.sin(angle) * radius,
-    };
+/** Layered LR layout; acyclicer helps when local sockets form cycles. */
+function layoutWithDagre(nodes: Node[], edges: Edge[]): Node[] {
+  if (nodes.length === 0) return nodes;
+  const g = new Dagre.graphlib.Graph();
+  g.setDefaultEdgeLabel(() => ({}));
+  g.setGraph({
+    rankdir: "LR",
+    nodesep: 56,
+    ranksep: 88,
+    marginx: 32,
+    marginy: 32,
+    acyclicer: "greedy",
+  });
+
+  for (const node of nodes) {
+    g.setNode(node.id, { width: PROC_NODE_W, height: PROC_NODE_H });
   }
-  const cols = Math.max(3, Math.ceil(Math.sqrt(total)));
-  const rows = Math.ceil(total / cols);
-  const col = index % cols;
-  const row = Math.floor(index / cols);
-  const spacingX = 118;
-  const spacingY = 88;
-  const w = (cols - 1) * spacingX;
-  const h = (rows - 1) * spacingY;
-  return {
-    x: cx - w / 2 + col * spacingX,
-    y: cy - h / 2 + row * spacingY,
-  };
+  for (const edge of edges) {
+    g.setEdge(edge.source, edge.target);
+  }
+  Dagre.layout(g);
+
+  return nodes.map((node) => {
+    const pos = g.node(node.id);
+    if (!pos) return node;
+    return {
+      ...node,
+      position: {
+        x: pos.x - PROC_NODE_W / 2,
+        y: pos.y - PROC_NODE_H / 2,
+      },
+    };
+  });
 }
+
+export type BuildFlowGraphOptions = {
+  /** When false, reuse positions from prevNodes for matching ids. */
+  relayout?: boolean;
+};
 
 /**
  * Build graph for one local-interconnect component only (purple process↔process edges).
@@ -84,11 +101,13 @@ export function buildFlowGraph(
   component: LocalComponent | null,
   selection: GraphSelection,
   prevNodes: Node[] = [],
+  options: BuildFlowGraphOptions = {},
 ): { nodes: Node[]; edges: Edge[] } {
   if (!component || component.pids.length === 0) {
     return { nodes: [], edges: [] };
   }
 
+  const relayout = options.relayout !== false;
   const names = namesByPidFrom(allConns);
   const visible = component.localEdges;
   const hasSelection = selection.selectedPid != null || selection.selectedEdgeId != null;
@@ -102,12 +121,10 @@ export function buildFlowGraph(
   }
 
   const oldPos = Object.fromEntries(prevNodes.map((n) => [n.id, n.position]));
-  const cx = 400;
-  const cy = 280;
 
-  const nodes: Node[] = [];
+  let nodes: Node[] = [];
   const procList = [...component.pids].sort((a, b) => a - b);
-  procList.forEach((pid, i) => {
+  procList.forEach((pid) => {
     if (!pidSet.has(pid)) return;
     const id = `proc:${pid}`;
     const name = names.get(pid) ?? "?";
@@ -115,7 +132,7 @@ export function buildFlowGraph(
     nodes.push({
       id,
       type: "process",
-      position: oldPos[id] ?? layoutPosition(i, procList.length, cx, cy),
+      position: { x: 0, y: 0 },
       data: {
         kind: "proc",
         pid,
@@ -137,6 +154,8 @@ export function buildFlowGraph(
         id: c.id,
         source: `proc:${c.pid}`,
         target: `proc:${c.peerPid}`,
+        sourceHandle: "source-right",
+        targetHandle: "target-left",
         type: "smoothstep",
         animated: false,
         style: edgeStyleCss(dim, hi),
@@ -144,6 +163,15 @@ export function buildFlowGraph(
         data: { dir: "local", connId: c.id },
       } satisfies Edge;
     });
+
+  if (relayout) {
+    nodes = layoutWithDagre(nodes, edges);
+  } else {
+    nodes = nodes.map((n) => {
+      const p = oldPos[n.id];
+      return p ? { ...n, position: p } : n;
+    });
+  }
 
   return { nodes, edges };
 }

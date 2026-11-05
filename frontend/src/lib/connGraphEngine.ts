@@ -6,7 +6,6 @@ export type GraphFilters = {
   localOnly: boolean;
   inOnly: boolean;
   outOnly: boolean;
-  hideBrowser: boolean;
   search: string;
 };
 
@@ -32,13 +31,6 @@ export function dirFromModel(d: string): DirUi {
   if (d === "local") return "local";
   if (d === "inbound") return "in";
   return "out";
-}
-
-export function isBrowserProcess(name: string): boolean {
-  const n = name.toLowerCase();
-  return /chrome|chromium|firefox|msedge|edge|safari|brave|vivaldi|arc|google chrome/.test(
-    n,
-  );
 }
 
 export function toUiConn(c: Connection): UiConn {
@@ -100,11 +92,6 @@ export function connVisible(
   namesByPid: Map<number, string>,
 ): boolean {
   const name = namesByPid.get(c.pid) ?? c.name;
-  if (filters.hideBrowser && isBrowserProcess(name)) return false;
-  if (c.peerPid) {
-    const peer = namesByPid.get(c.peerPid) ?? c.peerName;
-    if (filters.hideBrowser && isBrowserProcess(peer)) return false;
-  }
   if (filters.localOnly && c.dir !== "local") return false;
   if (filters.inOnly && c.dir !== "in") return false;
   if (filters.outOnly && c.dir !== "out") return false;

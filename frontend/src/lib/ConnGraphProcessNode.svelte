@@ -11,10 +11,8 @@
   class:dim={data.dimmed}
   class:has-local={data.hasLocal}
 >
-  <Handle class="flow-handle" type="target" position={Position.Left} />
-  <Handle class="flow-handle" type="source" position={Position.Right} />
-  <Handle class="flow-handle" type="target" position={Position.Top} id="t-top" />
-  <Handle class="flow-handle" type="source" position={Position.Bottom} id="s-bottom" />
+  <Handle class="flow-handle" type="target" position={Position.Left} id="target-left" />
+  <Handle class="flow-handle" type="source" position={Position.Right} id="source-right" />
   <div class="flow-proc-inner">
     <div class="name" class:unknown={data.name === "?"}>{data.name}</div>
     <div class="pid">{data.pid}</div>

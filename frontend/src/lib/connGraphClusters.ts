@@ -1,4 +1,4 @@
-import { graphEdgeRows, isBrowserProcess, namesByPidFrom, type UiConn } from "./connGraphEngine";
+import { graphEdgeRows, type UiConn } from "./connGraphEngine";
 
 export type LocalComponent = {
   /** Stable id (min pid in component). */
@@ -43,22 +43,14 @@ function shortProcName(name: string, max = 14): string {
   return name.slice(0, max - 1) + "…";
 }
 
-/** Local purple edges only (paired); respects hideBrowser on endpoints. */
-export function localInterconnectEdges(all: UiConn[], hideBrowser: boolean): UiConn[] {
-  const names = namesByPidFrom(all);
-  return graphEdgeRows(all).filter((c) => {
-    if (c.dir !== "local" || !c.peerPid) return false;
-    if (!hideBrowser) return true;
-    const a = names.get(c.pid) ?? c.name;
-    const b = names.get(c.peerPid) ?? c.peerName;
-    return !isBrowserProcess(a) && !isBrowserProcess(b);
-  });
+/** Local purple edges only (paired). */
+export function localInterconnectEdges(all: UiConn[]): UiConn[] {
+  return graphEdgeRows(all).filter((c) => c.dir === "local" && c.peerPid);
 }
 
 /** Connected components over process nodes linked by local↔local pairs. Singletons for processes with no paired local edge. */
-export function buildLocalComponents(all: UiConn[], hideBrowser: boolean): LocalComponent[] {
-  const names = namesByPidFrom(all);
-  const localEdges = localInterconnectEdges(all, hideBrowser);
+export function buildLocalComponents(all: UiConn[]): LocalComponent[] {
+  const localEdges = localInterconnectEdges(all);
   const uf = new UnionFind();
 
   for (const c of localEdges) {
@@ -69,13 +61,8 @@ export function buildLocalComponents(all: UiConn[], hideBrowser: boolean): Local
 
   const allPids = new Set<number>();
   for (const c of all) {
-    const n = names.get(c.pid) ?? c.name;
-    if (hideBrowser && isBrowserProcess(n)) continue;
     allPids.add(c.pid);
-    if (c.peerPid) {
-      const pn = names.get(c.peerPid) ?? c.peerName;
-      if (!(hideBrowser && isBrowserProcess(pn))) allPids.add(c.peerPid);
-    }
+    if (c.peerPid) allPids.add(c.peerPid);
   }
 
   for (const pid of allPids) uf.ensure(pid);
