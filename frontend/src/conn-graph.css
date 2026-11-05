@@ -77,6 +77,36 @@ html.conn-graph-root body {
   outline: none;
 }
 
+.cg-group-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cg-group-prefix {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--local);
+}
+
+.cg-group-select {
+  max-width: 220px;
+  font: 500 11px/1.3 var(--sans);
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--local) 35%, var(--hair));
+  background: var(--local-soft);
+  color: var(--text);
+}
+
+.cg-group-meta {
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .cg-chips {
   display: flex;
   flex-wrap: wrap;
@@ -139,6 +169,31 @@ html.conn-graph-root body {
 
 .cg-legend i.l-out {
   border-color: var(--out-edge);
+}
+
+.cg-legend-note {
+  font-size: 10px;
+  color: var(--faint);
+}
+
+.cg-graph-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.cg-table tr.other-group td {
+  opacity: 0.72;
+}
+
+.cg-table tr.other-group:hover td {
+  opacity: 1;
 }
 
 .cg-body {

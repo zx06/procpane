@@ -1,14 +1,6 @@
 import { MarkerType, type Edge, type Node } from "@xyflow/svelte";
-import {
-  connVisible,
-  dirCssVar,
-  graphEdgeRows,
-  namesByPidFrom,
-  type DirUi,
-  type GraphFilters,
-  type GraphSelection,
-  type UiConn,
-} from "./connGraphEngine";
+import { dirCssVar, namesByPidFrom, type GraphSelection, type UiConn } from "./connGraphEngine";
+import type { LocalComponent } from "./connGraphClusters";
 
 export type ProcessNodeData = {
   kind: "proc";
@@ -18,27 +10,17 @@ export type ProcessNodeData = {
   dimmed: boolean;
 };
 
-export type StubNodeData = {
-  kind: "ext";
-  label: string;
-  dir: DirUi;
-  dimmed: boolean;
-};
-
-/** Resolve theme token to a concrete color for SVG markers (markers do not always resolve var()). */
-function resolvedStroke(dir: DirUi): string {
-  const fallback = dir === "local" ? "#7c3aed" : dir === "in" ? "#059669" : "#64748b";
+function resolvedStrokeLocal(): string {
+  const fallback = "#7c3aed";
   if (typeof document === "undefined") return fallback;
-  const token = dir === "local" ? "--local" : dir === "in" ? "--in-edge" : "--out-edge";
-  const v = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+  const v = getComputedStyle(document.documentElement).getPropertyValue("--local").trim();
   return v || fallback;
 }
 
-function edgeStyleCss(dir: DirUi, dim: boolean, hi: boolean): string {
-  const stroke = dirCssVar(dir);
-  const width = dir === "local" ? 3.2 : 1.6;
+function edgeStyleCss(dim: boolean, hi: boolean): string {
+  const stroke = dirCssVar("local");
   const opacity = dim ? 0.2 : hi ? 1 : 0.75;
-  return `stroke: ${stroke}; stroke-width: ${width}px; opacity: ${opacity};`;
+  return `stroke: ${stroke}; stroke-width: 3.2px; opacity: ${opacity};`;
 }
 
 function connHighlighted(c: UiConn, selection: GraphSelection): boolean {
@@ -49,14 +31,14 @@ function connHighlighted(c: UiConn, selection: GraphSelection): boolean {
   return false;
 }
 
-function procRelated(pid: number, visible: UiConn[], selection: GraphSelection): boolean {
+function procRelated(pid: number, edges: UiConn[], selection: GraphSelection): boolean {
   if (selection.selectedPid === pid) return true;
   if (selection.selectedEdgeId) {
-    const hit = visible.find((c) => c.id === selection.selectedEdgeId);
+    const hit = edges.find((c) => c.id === selection.selectedEdgeId);
     return !!hit && (hit.pid === pid || hit.peerPid === pid);
   }
   if (selection.selectedPid != null) {
-    return visible.some(
+    return edges.some(
       (c) =>
         (c.pid === selection.selectedPid || c.peerPid === selection.selectedPid) &&
         (c.pid === pid || c.peerPid === pid),
@@ -71,20 +53,20 @@ function layoutPosition(
   cx: number,
   cy: number,
 ): { x: number; y: number } {
-  if (total <= 14) {
-    const radius = Math.min(520, 96 + total * 26);
+  if (total <= 8) {
+    const radius = Math.min(280, 72 + total * 22);
     const angle = (index / Math.max(total, 1)) * Math.PI * 2 - Math.PI / 2;
     return {
       x: cx + Math.cos(angle) * radius,
       y: cy + Math.sin(angle) * radius,
     };
   }
-  const cols = Math.max(4, Math.ceil(Math.sqrt(total * 1.4)));
+  const cols = Math.max(3, Math.ceil(Math.sqrt(total)));
   const rows = Math.ceil(total / cols);
   const col = index % cols;
   const row = Math.floor(index / cols);
-  const spacingX = 128;
-  const spacingY = 96;
+  const spacingX = 118;
+  const spacingY = 88;
   const w = (cols - 1) * spacingX;
   const h = (rows - 1) * spacingY;
   return {
@@ -93,44 +75,40 @@ function layoutPosition(
   };
 }
 
-/** Graph-visible rows: deduped locals, skip unpaired local (no peer PID — no 127.0.0.1 stub hairball). */
-function graphVisibleRows(all: UiConn[], filters: GraphFilters, names: Map<number, string>): UiConn[] {
-  return graphEdgeRows(all)
-    .filter((c) => connVisible(c, filters, names))
-    .filter((c) => !(c.dir === "local" && !c.peerPid));
-}
-
-/** Build Svelte Flow nodes/edges from filtered connections; preserves prior node positions by id. */
+/**
+ * Build graph for one local-interconnect component only (purple process↔process edges).
+ * External connections never appear in the graph.
+ */
 export function buildFlowGraph(
   allConns: UiConn[],
-  filters: GraphFilters,
+  component: LocalComponent | null,
   selection: GraphSelection,
   prevNodes: Node[] = [],
 ): { nodes: Node[]; edges: Edge[] } {
-  const names = namesByPidFrom(allConns);
-  const visible = graphVisibleRows(allConns, filters, names);
-  const hasSelection = selection.selectedPid != null || selection.selectedEdgeId != null;
+  if (!component || component.pids.length === 0) {
+    return { nodes: [], edges: [] };
+  }
 
-  const procIds = new Set<number>();
-  visible.forEach((c) => {
-    procIds.add(c.pid);
-    if (c.peerPid) procIds.add(c.peerPid);
-  });
+  const names = namesByPidFrom(allConns);
+  const visible = component.localEdges;
+  const hasSelection = selection.selectedPid != null || selection.selectedEdgeId != null;
+  const pidSet = new Set(component.pids);
 
   const localCount = new Map<number, number>();
-  for (const c of allConns) {
-    if (c.dir !== "local" || !c.peerPid || !connVisible(c, filters, names)) continue;
+  for (const c of visible) {
+    if (!c.peerPid) continue;
     localCount.set(c.pid, (localCount.get(c.pid) ?? 0) + 1);
     localCount.set(c.peerPid, (localCount.get(c.peerPid) ?? 0) + 1);
   }
 
   const oldPos = Object.fromEntries(prevNodes.map((n) => [n.id, n.position]));
-  const cx = 480;
-  const cy = 320;
+  const cx = 400;
+  const cy = 280;
 
   const nodes: Node[] = [];
-  const procList = [...procIds];
+  const procList = [...component.pids].sort((a, b) => a - b);
   procList.forEach((pid, i) => {
+    if (!pidSet.has(pid)) return;
     const id = `proc:${pid}`;
     const name = names.get(pid) ?? "?";
     const related = procRelated(pid, visible, selection);
@@ -149,67 +127,23 @@ export function buildFlowGraph(
     });
   });
 
-  const edges: Edge[] = [];
-  visible.forEach((c, idx) => {
-    const markerColor = resolvedStroke(c.dir);
-    const hi = connHighlighted(c, selection);
-    const dim = hasSelection && !hi;
-    const style = edgeStyleCss(c.dir, dim, hi);
-
-    if (c.dir === "local" && c.peerPid) {
-      edges.push({
+  const markerColor = resolvedStrokeLocal();
+  const edges: Edge[] = visible
+    .filter((c) => c.peerPid != null && pidSet.has(c.pid) && pidSet.has(c.peerPid))
+    .map((c) => {
+      const hi = connHighlighted(c, selection);
+      const dim = hasSelection && !hi;
+      return {
         id: c.id,
         source: `proc:${c.pid}`,
         target: `proc:${c.peerPid}`,
         type: "smoothstep",
         animated: false,
-        style,
+        style: edgeStyleCss(dim, hi),
         markerEnd: { type: MarkerType.ArrowClosed, color: markerColor },
-        data: { dir: c.dir, connId: c.id },
-      });
-      return;
-    }
-
-    if (c.dir === "local") {
-      return;
-    }
-
-    const stubId = `ext:${c.id}`;
-    if (!nodes.some((n) => n.id === stubId)) {
-      const src = nodes.find((n) => n.id === `proc:${c.pid}`);
-      const bx = src?.position.x ?? cx;
-      const by = src?.position.y ?? cy;
-      const ang = Math.atan2(by - cy, bx - cx) + ((idx % 5) - 2) * 0.25;
-      nodes.push({
-        id: stubId,
-        type: "stub",
-        position:
-          oldPos[stubId] ?? {
-            x: bx + Math.cos(ang) * 130,
-            y: by + Math.sin(ang) * 130,
-          },
-        data: {
-          kind: "ext",
-          label: c.remote,
-          dir: c.dir,
-          dimmed: hasSelection && !hi,
-        } satisfies StubNodeData,
-      });
-    }
-
-    const source = c.dir === "out" ? `proc:${c.pid}` : stubId;
-    const target = c.dir === "out" ? stubId : `proc:${c.pid}`;
-    edges.push({
-      id: c.id,
-      source,
-      target,
-      type: "smoothstep",
-      animated: false,
-      style,
-      markerEnd: { type: MarkerType.ArrowClosed, color: markerColor },
-      data: { dir: c.dir, connId: c.id },
+        data: { dir: "local", connId: c.id },
+      } satisfies Edge;
     });
-  });
 
   return { nodes, edges };
 }

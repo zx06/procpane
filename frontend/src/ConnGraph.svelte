@@ -12,10 +12,18 @@
   import "@xyflow/svelte/dist/style.css";
   import RefreshButton from "./lib/RefreshButton.svelte";
   import ConnGraphProcessNode from "./lib/ConnGraphProcessNode.svelte";
-  import ConnGraphStubNode from "./lib/ConnGraphStubNode.svelte";
   import ConnGraphFitView from "./lib/ConnGraphFitView.svelte";
   import { listLocalConnections } from "./lib/api";
   import { buildFlowGraph } from "./lib/connGraphFlow";
+  import {
+    buildLocalComponents,
+    componentForPid,
+    componentLabel,
+    loadRememberedComponentId,
+    pickDefaultComponentId,
+    rememberComponentId,
+    type LocalComponent,
+  } from "./lib/connGraphClusters";
   import {
     dirLabel,
     displayTableRows,
@@ -28,10 +36,11 @@
 
   const nodeTypes = {
     process: ConnGraphProcessNode,
-    stub: ConnGraphStubNode,
   };
 
   let connections = $state<UiConn[]>([]);
+  let localComponents = $state<LocalComponent[]>([]);
+  let activeComponentId = $state<string | null>(null);
   let loading = $state(true);
   let refreshing = $state(false);
   let loadError = $state("");
@@ -55,6 +64,17 @@
     return namesByPidFrom(connections);
   }
 
+  function activeComponent(): LocalComponent | null {
+    if (!activeComponentId) return null;
+    return localComponents.find((c) => c.id === activeComponentId) ?? null;
+  }
+
+  function activeComponentIndex(): number {
+    if (!activeComponentId) return 0;
+    const i = localComponents.findIndex((c) => c.id === activeComponentId);
+    return i >= 0 ? i + 1 : 0;
+  }
+
   function filteredTableRows(): UiConn[] {
     return displayTableRows(connections, filters, namesByPid());
   }
@@ -74,11 +94,26 @@
     };
   }
 
+  function recomputeComponents(remember = true) {
+    localComponents = buildLocalComponents(connections, filters.hideBrowser);
+    const prev = remember ? activeComponentId ?? loadRememberedComponentId() : null;
+    activeComponentId = pickDefaultComponentId(localComponents, prev);
+    rememberComponentId(activeComponentId);
+  }
+
   function syncFlowGraph(fit = false) {
-    const built = buildFlowGraph(connections, filters, selection, nodes);
+    const built = buildFlowGraph(connections, activeComponent(), selection, nodes);
     nodes = built.nodes;
     edges = built.edges;
     if (fit) fitRevision += 1;
+  }
+
+  function setActiveComponent(id: string, fit = true) {
+    if (id === activeComponentId) return;
+    activeComponentId = id;
+    rememberComponentId(id);
+    selection = { selectedPid: null, selectedEdgeId: null };
+    syncFlowGraph(fit);
   }
 
   async function load() {
@@ -88,6 +123,7 @@
       const res = await listLocalConnections();
       connections = res.connections.map(toUiConn);
       updatedAt = new Date(res.generatedAt).toLocaleTimeString("zh-CN", { hour12: false });
+      recomputeComponents(true);
       syncFlowGraph(true);
     } catch (e) {
       console.error(e);
@@ -106,11 +142,12 @@
       inOnly: key === "inOnly" ? next : false,
       outOnly: key === "outOnly" ? next : false,
     };
-    syncFlowGraph(true);
+    syncFlowGraph(false);
   }
 
   function toggleHideBrowser() {
     filters = { ...filters, hideBrowser: !filters.hideBrowser };
+    recomputeComponents(true);
     syncFlowGraph(true);
   }
 
@@ -119,12 +156,21 @@
     syncFlowGraph(false);
   }
 
+  function onGroupChange(ev: Event) {
+    const id = (ev.currentTarget as HTMLSelectElement).value;
+    setActiveComponent(id, true);
+  }
+
   function selectPid(pid: number | null, edgeId: string | null = null) {
     selection = { selectedPid: pid, selectedEdgeId: edgeId };
     syncFlowGraph(false);
   }
 
   function selectRow(c: UiConn) {
+    const comp = componentForPid(localComponents, c.pid);
+    if (comp && comp.id !== activeComponentId) {
+      setActiveComponent(comp.id, true);
+    }
     selectPid(c.pid, c.id);
   }
 
@@ -147,6 +193,26 @@
         oninput={onSearchInput}
       />
     </label>
+
+    {#if localComponents.length > 0}
+      <div class="cg-group-bar">
+        <span class="cg-group-prefix">组</span>
+        <select
+          class="cg-group-select"
+          aria-label="本地互联组"
+          value={activeComponentId ?? ""}
+          onchange={onGroupChange}
+        >
+          {#each localComponents as comp (comp.id)}
+            <option value={comp.id}>{componentLabel(comp, namesByPid())}</option>
+          {/each}
+        </select>
+        <span class="cg-group-meta"
+          >{activeComponentIndex()}/{localComponents.length}</span
+        >
+      </div>
+    {/if}
+
     <div class="cg-chips">
       <button
         type="button"
@@ -176,8 +242,7 @@
     <RefreshButton spinning={refreshing} onclick={() => load()} />
     <div class="cg-legend">
       <span><i class="l-local"></i>本地互联</span>
-      <span><i class="l-in"></i>入站</span>
-      <span><i class="l-out"></i>出站</span>
+      <span class="cg-legend-note">图仅当前组</span>
     </div>
   </header>
 
@@ -204,21 +269,20 @@
         onedgeclick={({ edge }) => {
           const connId = (edge.data?.connId as string) ?? edge.id;
           const row = connections.find((c) => c.id === connId);
-          selectPid(row?.pid ?? null, connId);
+          if (row) selectRow(row);
+          else selectPid(null, connId);
         }}
         onpaneclick={() => selectPid(null, null)}
       >
         <Background variant={BackgroundVariant.Dots} gap={18} size={1} />
         <Controls showInteractive={false} />
-        <MiniMap
-          nodeStrokeWidth={2}
-          pannable
-          zoomable
-          class="cg-minimap"
-        />
+        <MiniMap nodeStrokeWidth={2} pannable zoomable class="cg-minimap" />
         <ConnGraphFitView revision={fitRevision} />
       </SvelteFlow>
-      <div class="cg-graph-hint">拖拽节点 · 滚轮缩放 · 点击选中</div>
+      {#if !loading && localComponents.length === 0}
+        <div class="cg-graph-empty">无本地互联组可展示</div>
+      {/if}
+      <div class="cg-graph-hint">拖拽节点 · 滚轮缩放 · 点击选中 · 底表可跳转其他组</div>
     </div>
 
     <aside class="cg-side">
@@ -292,8 +356,12 @@
             <tr><td colspan="5">无匹配的 ESTABLISHED 连接</td></tr>
           {:else}
             {#each filteredTableRows() as c (c.id)}
+              {@const inActive =
+                activeComponentId != null &&
+                componentForPid(localComponents, c.pid)?.id === activeComponentId}
               <tr
                 class:on={c.pid === selection.selectedPid || c.id === selection.selectedEdgeId}
+                class:other-group={!inActive}
                 onclick={() => selectRow(c)}
               >
                 <td class="pname">{c.name} {c.pid}</td>
@@ -315,7 +383,7 @@
           >{filteredTableRows().length} 条连接{#if updatedAt}
             · 上次更新 {updatedAt}{/if}</span
         >
-        <span>TCP ESTABLISHED · 本机</span>
+        <span>TCP ESTABLISHED · 本机 · 图={activeComponentIndex()}/{localComponents.length} 组</span>
       </div>
     </div>
   </div>

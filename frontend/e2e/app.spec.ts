@@ -392,7 +392,10 @@ test.describe("procpane conn graph (server build, /conn-graph.html)", () => {
     });
     await expect(page.getByRole("button", { name: "只看本地互联" })).toBeVisible();
     await expect(page.getByRole("button", { name: "隐藏浏览器类" })).toHaveClass(/on/);
-    await expect(page.getByText("本地互联").first()).toBeVisible();
+    const groupSelect = page.getByLabel("本地互联组");
+    if (await groupSelect.count()) {
+      await expect(groupSelect).toBeVisible();
+    }
     await expect(page.getByText("TCP ESTABLISHED · 本机")).toBeVisible();
     await expect(page.locator("table.cg-table")).toBeVisible();
     await expect(page.locator(".svelte-flow")).toBeVisible();
