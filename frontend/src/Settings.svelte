@@ -31,6 +31,7 @@
     try {
       await setSSHEnabled(alias, enabled);
       await load();
+      emitSettingsChanged({ sshHosts: true });
       message = "已保存";
     } catch (e) {
       console.error(e);
@@ -48,7 +49,6 @@
     try {
       await setRefreshIntervalSec(sec);
       await load();
-      emitSettingsChanged({ refreshIntervalSec: sec });
       message = "已保存";
     } catch (e) {
       console.error(e);
@@ -65,6 +65,7 @@
     try {
       await setDockerContext(sel.value);
       await load();
+      emitSettingsChanged({ dockerContext: true });
       message = "已保存";
     } catch (e) {
       console.error(e);

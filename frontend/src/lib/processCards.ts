@@ -89,3 +89,117 @@ export function filterListenersBySearch(
 export function formatPortsSnippet(ports: PortRef[]): string {
   return ports.map((p) => `:${p.port}/${p.proto}`).join(" · ");
 }
+
+export type SSHProcessCard = {
+  id: string;
+  pid: number;
+  name: string;
+  host: string;
+  ports: PortRef[];
+};
+
+/** Group SSH listeners by PID (pid≤0 stays one card per port). */
+export function listenersToSSHProcessCards(
+  listeners: Listener[],
+): SSHProcessCard[] {
+  const groups = new Map<string, Listener[]>();
+  for (const l of listeners) {
+    const key =
+      l.pid > 0 ? `pid-${l.pid}` : `nopid-${l.port}-${l.proto}-${l.host ?? ""}`;
+    const list = groups.get(key);
+    if (list) list.push(l);
+    else groups.set(key, [l]);
+  }
+  const cards: SSHProcessCard[] = [];
+  for (const [key, items] of groups) {
+    const first = items[0];
+    const ports = items
+      .map((l) => ({ port: l.port, proto: l.proto }))
+      .sort(sortPorts);
+    cards.push({
+      id: key,
+      pid: first.pid,
+      name: first.name,
+      host: first.host ?? "",
+      ports,
+    });
+  }
+  cards.sort((a, b) => {
+    const pa = a.ports[0]?.port ?? 0;
+    const pb = b.ports[0]?.port ?? 0;
+    return pa - pb || a.pid - b.pid;
+  });
+  return cards;
+}
+
+export type DockerCard = {
+  id: string;
+  containerId: string;
+  containerName: string;
+  image: string;
+  publishHost?: string;
+  ports: PortRef[];
+};
+
+/** Group Docker listeners by container id. */
+export function listenersToDockerCards(listeners: Listener[]): DockerCard[] {
+  const byContainer = new Map<string, Listener[]>();
+  for (const l of listeners) {
+    const cid = l.containerId ?? l.id;
+    const list = byContainer.get(cid);
+    if (list) list.push(l);
+    else byContainer.set(cid, [l]);
+  }
+  const cards: DockerCard[] = [];
+  for (const [cid, items] of byContainer) {
+    const first = items[0];
+    const ports = items
+      .map((l) => ({ port: l.port, proto: l.proto }))
+      .sort(sortPorts);
+    cards.push({
+      id: `docker-${cid}`,
+      containerId: cid,
+      containerName: first.containerName ?? "",
+      image: first.image ?? "",
+      publishHost: first.publishHost,
+      ports,
+    });
+  }
+  cards.sort((a, b) => {
+    const pa = a.ports[0]?.port ?? 0;
+    const pb = b.ports[0]?.port ?? 0;
+    return pa - pb || a.containerId.localeCompare(b.containerId);
+  });
+  return cards;
+}
+
+export function filterSSHCardsBySearch(
+  cards: SSHProcessCard[],
+  query: string,
+): SSHProcessCard[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return cards;
+  return cards.filter(
+    (c) =>
+      String(c.pid).includes(q) ||
+      c.name.toLowerCase().includes(q) ||
+      displayProcessName(c.name).toLowerCase().includes(q) ||
+      c.host.toLowerCase().includes(q) ||
+      c.ports.some((p) => String(p.port).includes(q)),
+  );
+}
+
+export function filterDockerCardsBySearch(
+  cards: DockerCard[],
+  query: string,
+): DockerCard[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return cards;
+  return cards.filter(
+    (c) =>
+      c.containerName.toLowerCase().includes(q) ||
+      c.containerId.toLowerCase().includes(q) ||
+      (c.image ?? "").toLowerCase().includes(q) ||
+      c.ports.some((p) => String(p.port).includes(q)),
+  );
+}

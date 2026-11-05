@@ -1,12 +1,29 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import { dockerStatus, listDockerListeners, type Listener } from "./api";
-  import { displayProcessName, listenerMatchesSearch } from "./displayListener";
+  import { onMount } from "svelte";
+  import {
+    dockerStatus,
+    listDockerListeners,
+    onRefresh,
+    onSettingsChanged,
+    refreshTargetsPanel,
+    type Listener,
+    type RefreshPayload,
+  } from "./api";
+  import { displayProcessName } from "./displayListener";
+  import {
+    filterDockerCardsBySearch,
+    listenersToDockerCards,
+  } from "./processCards";
   import {
     formatLastUpdated,
     loadRefreshIntervalMs,
+    settingsAffectsSource,
     watchRefreshInterval,
   } from "./refreshPoll";
+  import { bindPanelVisibility, shouldPoll } from "./panelPoll";
+  import RefreshButton from "./RefreshButton.svelte";
+
+  let { active = false }: { active?: boolean } = $props();
 
   let rows: Listener[] = $state([]);
   let query = $state("");
@@ -14,19 +31,10 @@
   let lastSuccessAt = $state<number | null>(null);
   let status = $state<Awaited<ReturnType<typeof dockerStatus>> | null>(null);
   let error = $state("");
-  /** Non-fatal refresh error when stale rows are still shown. */
   let refreshWarn = $state("");
 
-  const filtered = $derived(
-    rows.filter((r) => {
-      const q = query.trim().toLowerCase();
-      if (!q) return true;
-      return (
-        listenerMatchesSearch(q, r.port, r.name, r.pid) ||
-        (r.containerName ?? "").toLowerCase().includes(q) ||
-        (r.image ?? "").toLowerCase().includes(q)
-      );
-    }),
+  const cards = $derived(
+    filterDockerCardsBySearch(listenersToDockerCards(rows), query),
   );
 
   function freshLabel() {
@@ -52,7 +60,8 @@
       lastSuccessAt = Date.now();
     } catch (e) {
       console.error(e);
-      const msg = "加载失败（见控制台）";
+      const msg =
+        e instanceof Error ? e.message : "加载 Docker 端口列表失败";
       if (rows.length === 0) {
         error = msg;
       } else {
@@ -66,30 +75,59 @@
   let pollMs = $state(30_000);
   let pollTimer: ReturnType<typeof setInterval> | undefined;
   let unsubSettings: (() => void) | undefined;
+  let unsubRefresh: (() => void) | undefined;
 
-  function restartPollTimer() {
+  function stopPoll() {
     if (pollTimer !== undefined) {
       clearInterval(pollTimer);
       pollTimer = undefined;
     }
+  }
+
+  function startPoll() {
+    if (pollTimer !== undefined) return;
+    if (!shouldPoll(active)) return;
     pollTimer = setInterval(() => {
-      if (!refreshing) void doRefresh();
+      if (!refreshing && shouldPoll(active)) void doRefresh();
     }, pollMs);
+  }
+
+  function restartPoll() {
+    stopPoll();
+    if (shouldPoll(active)) startPoll();
   }
 
   onMount(async () => {
     pollMs = await loadRefreshIntervalMs();
     void doRefresh();
-    restartPollTimer();
+    restartPoll();
+    unsubRefresh = onRefresh((data: RefreshPayload) => {
+      if (refreshTargetsPanel(data, "docker")) void doRefresh();
+    });
     unsubSettings = watchRefreshInterval((ms) => {
       pollMs = ms;
-      restartPollTimer();
+      restartPoll();
     });
+    const unsubSettingsChanged = onSettingsChanged((data) => {
+      if (settingsAffectsSource(data, "docker")) void doRefresh();
+    });
+    const unbindVis = bindPanelVisibility(
+      () => active,
+      () => restartPoll(),
+      () => stopPoll(),
+    );
+    return () => {
+      stopPoll();
+      unbindVis();
+      unsubSettings?.();
+      unsubRefresh?.();
+      unsubSettingsChanged();
+    };
   });
 
-  onDestroy(() => {
-    if (pollTimer) clearInterval(pollTimer);
-    unsubSettings?.();
+  $effect(() => {
+    if (shouldPoll(active)) restartPoll();
+    else stopPoll();
   });
 </script>
 
@@ -97,9 +135,9 @@
   <header class="pop-hd">
     <div class="hd-text">
       <h1>Docker</h1>
-      <div class="sub">已发布端口（Engine API）</div>
+      <div class="sub">已发布端口（只读，无法结束容器进程）</div>
     </div>
-    <span class="count-pill">{filtered.length}</span>
+    <span class="count-pill">{cards.length}</span>
   </header>
 
   {#if status && !status.reachable}
@@ -109,48 +147,44 @@
   {/if}
 
   {#if refreshWarn}
-    <div class="hint-bar warn">{refreshWarn}</div>
+    <div class="hint-bar warn">
+      {refreshWarn}
+      <button type="button" class="link-btn" onclick={() => doRefresh()}>再试一次</button>
+    </div>
   {/if}
 
   <div class="tools">
     <div class="search">
       <input type="search" placeholder="容器 / 端口 / 镜像…" bind:value={query} />
     </div>
-    <button
-      type="button"
-      class="icon-btn"
-      class:spin={refreshing}
-      title="刷新"
-      aria-label="刷新"
-      onclick={() => doRefresh()}
-    >
-      ↻
-    </button>
+    <RefreshButton spinning={refreshing} onclick={() => doRefresh()} />
   </div>
 
   <div class="cards-scroll">
-    {#if filtered.length > 0}
+    {#if cards.length > 0}
       <div class="cards">
-        {#each filtered as row (row.id)}
-          <div class="pcard docker-card">
+        {#each cards as card (card.id)}
+          <div class="pcard docker-card pcard-readonly">
             <div class="pcard-top">
               <div class="pcard-ports">
-                <span class="port-chip">
-                  <span class="port">:{row.port}</span>
-                  <span class="badge {row.proto}">{row.proto}</span>
-                </span>
+                {#each card.ports as p (p.port + p.proto)}
+                  <span class="port-chip">
+                    <span class="port">:{p.port}</span>
+                    <span class="badge {p.proto}">{p.proto}</span>
+                  </span>
+                {/each}
               </div>
               <div class="name">
-                {row.containerName || displayProcessName(row.name)}
+                {card.containerName || displayProcessName("?")}
               </div>
             </div>
             <div class="pcard-mid docker-meta">
-              <span class="dim">{row.containerId}</span>
-              {#if row.image}
-                <span class="dim">{row.image}</span>
+              <span class="dim">{card.containerId}</span>
+              {#if card.image}
+                <span class="dim">{card.image}</span>
               {/if}
-              {#if row.publishHost}
-                <span class="dim">{row.publishHost}</span>
+              {#if card.publishHost}
+                <span class="dim">{card.publishHost}</span>
               {/if}
             </div>
           </div>
@@ -160,9 +194,12 @@
       <div class="empty">
         <p>{error}</p>
         <p class="empty-hint">请启动 Docker 或检查 DOCKER_HOST / 本地 socket。</p>
+        <button type="button" class="btn primary" onclick={() => doRefresh()}>再试一次</button>
       </div>
     {:else if refreshing}
       <div class="empty">加载中…</div>
+    {:else if query.trim() && rows.length > 0}
+      <div class="empty">没有匹配「{query}」的结果</div>
     {:else}
       <div class="empty">没有已发布的容器端口</div>
     {/if}

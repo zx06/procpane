@@ -136,12 +136,33 @@ export async function version(): Promise<string> {
   return Call.ByName(`${svc}.Version`);
 }
 
-export function onRefresh(handler: () => void): () => void {
+export type SourceTab = "local" | "docker" | "ssh";
+
+export type RefreshPayload = {
+  source?: SourceTab | "all";
+};
+
+export function onRefresh(handler: (data: RefreshPayload) => void): () => void {
   return Events.On("procpane:refresh", handler);
+}
+
+export function refreshTargetsPanel(
+  data: RefreshPayload | undefined,
+  panel: SourceTab,
+): boolean {
+  const src = data?.source;
+  if (!src || src === "all") return true;
+  return src === panel;
+}
+
+export async function setActiveSource(tab: SourceTab): Promise<void> {
+  return Call.ByName(`${svc}.SetActiveSource`, tab);
 }
 
 export type SettingsChangedPayload = {
   refreshIntervalSec?: number;
+  dockerContext?: boolean;
+  sshHosts?: boolean;
 };
 
 export function onSettingsChanged(

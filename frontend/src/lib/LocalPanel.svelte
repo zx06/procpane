@@ -1,12 +1,15 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import { onMount } from "svelte";
   import {
     listListeners,
     killProcess,
     showProcess,
     onRefresh,
+    onSettingsChanged,
+    refreshTargetsPanel,
     type Listener,
     type ProcessInfo,
+    type RefreshPayload,
   } from "./api";
   import {
     filterListenersBySearch,
@@ -18,8 +21,13 @@
   import {
     formatLastUpdated,
     loadRefreshIntervalMs,
+    settingsAffectsSource,
     watchRefreshInterval,
   } from "./refreshPoll";
+  import { bindPanelVisibility, shouldPoll } from "./panelPoll";
+  import RefreshButton from "./RefreshButton.svelte";
+
+  let { active = true }: { active?: boolean } = $props();
 
   let rows: Listener[] = $state([]);
   let selectedId: string | null = $state(null);
@@ -34,9 +42,12 @@
   let procDetailNote = $state("");
   let toast = $state("");
   let toastVisible = $state(false);
+  let fetchError = $state("");
+  let initialLoad = $state(true);
   const processCards = $derived(
     listenersToProcessCards(filterListenersBySearch(rows, query)),
   );
+  const allCards = $derived(listenersToProcessCards(rows));
 
   const selected = $derived(
     processCards.find((c) => c.id === selectedId) ?? null,
@@ -63,6 +74,7 @@
 
   async function doRefresh() {
     refreshing = true;
+    fetchError = "";
     try {
       rows = await listListeners(protoFilter === "all" ? "all" : protoFilter);
       lastSuccessAt = Date.now();
@@ -74,9 +86,11 @@
       }
     } catch (e) {
       console.error(e);
-      showToast("刷新失败（见控制台）");
+      fetchError =
+        e instanceof Error ? e.message : "无法加载本地 LISTEN 列表";
     } finally {
       refreshing = false;
+      initialLoad = false;
     }
   }
 
@@ -165,15 +179,16 @@
 
   function startAutoRefresh() {
     if (pollTimer !== undefined) return;
+    if (!shouldPoll(active)) return;
     void doRefresh();
     pollTimer = setInterval(() => {
-      if (!refreshing) void doRefresh();
+      if (!refreshing && shouldPoll(active)) void doRefresh();
     }, pollMs);
   }
 
   function restartAutoRefreshPoll() {
     stopAutoRefresh();
-    if (!document.hidden) {
+    if (shouldPoll(active)) {
       startAutoRefresh();
     }
   }
@@ -185,34 +200,43 @@
     }
   }
 
-  function onPanelVisibilityChange() {
-    if (document.hidden) {
-      stopAutoRefresh();
-    } else {
-      startAutoRefresh();
-    }
-  }
-
   onMount(async () => {
     pollMs = await loadRefreshIntervalMs();
-    unsubRefresh = onRefresh(() => void doRefresh());
+    unsubRefresh = onRefresh((data: RefreshPayload) => {
+      if (refreshTargetsPanel(data, "local")) void doRefresh();
+    });
     unsubSettings = watchRefreshInterval((ms) => {
       pollMs = ms;
       restartAutoRefreshPoll();
     });
-    document.addEventListener("visibilitychange", onPanelVisibilityChange);
+    const unsubSettingsChanged = onSettingsChanged((data) => {
+      if (settingsAffectsSource(data, "local")) {
+        restartAutoRefreshPoll();
+        void doRefresh();
+      }
+    });
+    const unbindVis = bindPanelVisibility(
+      () => active,
+      () => restartAutoRefreshPoll(),
+      () => stopAutoRefresh(),
+    );
     window.addEventListener("keydown", onWindowKeydown);
-    if (!document.hidden) {
+    if (shouldPoll(active)) {
       startAutoRefresh();
     }
+    return () => {
+      stopAutoRefresh();
+      unbindVis();
+      unsubRefresh?.();
+      unsubSettings?.();
+      unsubSettingsChanged();
+      window.removeEventListener("keydown", onWindowKeydown);
+    };
   });
 
-  onDestroy(() => {
-    stopAutoRefresh();
-    document.removeEventListener("visibilitychange", onPanelVisibilityChange);
-    unsubRefresh?.();
-    unsubSettings?.();
-    window.removeEventListener("keydown", onWindowKeydown);
+  $effect(() => {
+    if (shouldPoll(active)) restartAutoRefreshPoll();
+    else stopAutoRefresh();
   });
 </script>
 
@@ -252,35 +276,31 @@
         </button>
       {/each}
     </div>
-    <button
-      type="button"
-      class="icon-btn"
-      class:spin={refreshing}
-      title="刷新"
-      aria-label="刷新"
-      onclick={() => doRefresh()}
-    >
-      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path
-          d="M3.2 8a4.8 4.8 0 0 1 8.3-3.2M12.8 8a4.8 4.8 0 0 1-8.3 3.2"
-          stroke="currentColor"
-          stroke-width="1.4"
-          stroke-linecap="round"
-        />
-        <path
-          d="M11.2 2.8v2.6H8.6M4.8 13.2v-2.6h2.6"
-          stroke="currentColor"
-          stroke-width="1.4"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-    </button>
+    <RefreshButton spinning={refreshing} onclick={() => doRefresh()} />
   </div>
+
+  {#if fetchError && rows.length > 0}
+    <div class="hint-bar warn">
+      {fetchError}
+      <button type="button" class="link-btn" onclick={() => doRefresh()}>再试一次</button>
+    </div>
+  {/if}
 
   <div class="cards-scroll">
     {#if processCards.length === 0}
-      <div class="empty">没有匹配的 LISTEN 端口</div>
+      <div class="empty">
+        {#if fetchError && rows.length === 0}
+          <p>{fetchError}</p>
+          <button type="button" class="btn primary" onclick={() => doRefresh()}>再试一次</button>
+        {:else if refreshing || initialLoad}
+          <p>加载中…</p>
+        {:else if rows.length === 0}
+          <p>当前没有 LISTEN 端口</p>
+        {:else}
+          <p>没有匹配「{query}」的结果</p>
+          <p class="empty-hint">共 {allCards.length} 个进程在监听，请调整搜索或协议筛选。</p>
+        {/if}
+      </div>
     {:else}
       <div class="cards">
         {#each processCards as card (card.id)}

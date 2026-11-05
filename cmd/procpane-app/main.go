@@ -89,6 +89,9 @@ func main() {
 	svc.BindSettingsWindow(func() {
 		settingsWindow.Show()
 	})
+	svc.BindEventEmitter(func(name string, data ...any) {
+		app.Event.Emit(name, data...)
+	})
 
 	window.RegisterHook(events.Common.WindowClosing, func(e *application.WindowEvent) {
 		window.Hide()
@@ -111,6 +114,9 @@ func main() {
 	menu := app.NewMenu()
 	menu.Add("打开面板").OnClick(func(_ *application.Context) {
 		window.Show()
+	})
+	menu.Add("刷新当前源").OnClick(func(_ *application.Context) {
+		svc.RefreshCurrentSource()
 	})
 	menu.Add("设置…").OnClick(func(_ *application.Context) {
 		settingsWindow.Show()

@@ -9,6 +9,10 @@ async function selectSourceTab(
   await nav.getByRole("button", { name: label, exact: true }).click();
 }
 
+function activeTabPanel(page: Page) {
+  return page.locator(".tab-panel-wrap:not(.hidden) .tab-panel");
+}
+
 test.describe("procpane UI (server build)", () => {
   test("smoke: source tabs 本机 / Docker / SSH", async ({ page }) => {
     await page.goto("/");
@@ -31,12 +35,13 @@ test.describe("procpane UI (server build)", () => {
     await selectSourceTab(page, "Docker");
 
     await expect(page.getByRole("heading", { name: "Docker", exact: true })).toBeVisible();
-    await expect(page.getByText("已发布端口（Engine API）")).toBeVisible();
+    await expect(page.getByText("已发布端口（只读，无法结束容器进程）")).toBeVisible();
 
     const hintDisconnected = page.getByText(/Docker 未连接/);
     const hintOk = page.getByText(/^Engine · /);
     const emptyPublished = page.getByText("没有已发布的容器端口");
-    const dockerCards = page.locator(".cards-scroll .docker-card");
+    const dockerPanel = activeTabPanel(page);
+    const dockerCards = dockerPanel.locator(".cards-scroll .docker-card");
     const dockerHint = page.getByText(/DOCKER_HOST|本地 socket/);
     const emptyError = page.getByText(/无法连接 Docker Engine|加载失败/);
 
@@ -63,15 +68,18 @@ test.describe("procpane UI (server build)", () => {
     await selectSourceTab(page, "SSH");
 
     await expect(page.getByRole("heading", { name: "SSH", exact: true })).toBeVisible();
-    await expect(page.getByText("已启用主机的 LISTEN")).toBeVisible();
+    await expect(
+      page.getByText("远程主机 LISTEN（只读，无法结束进程）"),
+    ).toBeVisible();
 
     const empty = page.getByText("尚未启用任何 SSH 主机");
     const settingsCta = page.getByRole("button", {
       name: "去设置启用 SSH 主机",
     });
-    const hostChip = page.locator(".host-chips .host-chip").first();
-    const sshEmptyList = page.getByText("没有 LISTEN 端口");
-    const sshCards = page.locator(".cards-scroll .pcard");
+    const sshPanel = page.locator('.tab-panel-wrap[data-tab="ssh"] .tab-panel');
+    const hostChip = sshPanel.locator(".host-chips .host-chip").first();
+    const sshEmptyList = sshPanel.getByText("没有 LISTEN 端口");
+    const sshCards = sshPanel.locator(".cards-scroll .pcard");
 
     await expect(empty.or(hostChip).or(sshEmptyList).or(sshCards.first())).toBeVisible({
       timeout: 30_000,
@@ -87,13 +95,14 @@ test.describe("procpane UI (server build)", () => {
 
     await expect(page.getByRole("heading", { name: /procpane/i })).toBeVisible();
     await expect(page.getByText("本地 LISTEN 端口")).toBeVisible();
-    await expect(page.getByPlaceholder("端口 / 进程…")).toBeVisible();
-    await expect(page.getByRole("button", { name: "全部" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "TCP" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "UDP" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "刷新" })).toBeVisible();
-    await expect(page.locator(".cards-scroll")).toBeVisible();
-    await expect(page.locator(".count-pill")).toBeVisible();
+    const panel = activeTabPanel(page);
+    await expect(panel.getByPlaceholder("端口 / 进程…")).toBeVisible();
+    await expect(panel.getByRole("button", { name: "全部" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "TCP" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "UDP" })).toBeVisible();
+    await expect(panel.getByRole("button", { name: "刷新" })).toBeVisible();
+    await expect(panel.locator(".cards-scroll")).toBeVisible();
+    await expect(panel.locator(".count-pill")).toBeVisible();
     await expect(page.getByRole("button", { name: "退出" })).toBeVisible();
 
     await page.screenshot({
@@ -105,8 +114,9 @@ test.describe("procpane UI (server build)", () => {
   test("service: listener cards or empty state after load", async ({ page }) => {
     await page.goto("/");
 
-    const cards = page.locator(".cards-scroll .pcard");
-    const empty = page.getByText("没有匹配的 LISTEN 端口");
+    const panel = activeTabPanel(page);
+    const cards = panel.locator(".cards-scroll .pcard");
+    const empty = panel.getByText(/当前没有 LISTEN 端口|没有匹配/);
     await expect(cards.first().or(empty)).toBeVisible({ timeout: 30_000 });
 
     const count = await cards.count();
@@ -199,14 +209,43 @@ test.describe("procpane UI (server build)", () => {
   test("interaction: proto chips toggle without error", async ({ page }) => {
     await page.goto("/");
     await selectSourceTab(page, "本机");
-    await expect(page.locator(".cards-scroll")).toBeVisible();
+    const panel = activeTabPanel(page);
+    await expect(panel.locator(".cards-scroll")).toBeVisible();
 
     for (const label of ["TCP", "UDP", "全部"] as const) {
-      await page.getByRole("button", { name: label }).click();
+      await panel.getByRole("button", { name: label }).click();
       await expect(page.getByRole("heading", { name: /procpane/i })).toBeVisible();
-      const cards = page.locator(".cards-scroll .pcard");
-      const empty = page.getByText("没有匹配的 LISTEN 端口");
+      const cards = panel.locator(".cards-scroll .pcard");
+      const empty = panel.getByText(/当前没有 LISTEN 端口|没有匹配/);
       await expect(cards.first().or(empty)).toBeVisible({ timeout: 30_000 });
+    }
+  });
+
+  test("tabs: keep search when switching away and back", async ({ page }) => {
+    await page.goto("/");
+    await selectSourceTab(page, "SSH");
+    const sshPanel = page.locator('.tab-panel-wrap[data-tab="ssh"] .tab-panel');
+    const sshSearch = sshPanel.getByPlaceholder("端口 / 进程…");
+    await sshSearch.fill("fixture-keepalive-query");
+    await selectSourceTab(page, "Docker");
+    await selectSourceTab(page, "SSH");
+    await expect(sshSearch).toHaveValue("fixture-keepalive-query");
+  });
+
+  test("docker tab: cards use read-only styling", async ({ page }) => {
+    await page.goto("/");
+    await selectSourceTab(page, "Docker");
+    const dockerPanel = activeTabPanel(page);
+    await expect(
+      dockerPanel.getByText("已发布端口（只读，无法结束容器进程）"),
+    ).toBeVisible();
+    const card = dockerPanel.locator(".docker-card.pcard-readonly").first();
+    const settled = dockerPanel
+      .getByText("没有已发布的容器端口")
+      .or(dockerPanel.getByText(/无法连接 Docker|加载 Docker|DOCKER_HOST/));
+    await expect(card.or(settled).first()).toBeVisible({ timeout: 30_000 });
+    if ((await card.count()) > 0) {
+      await expect(card).toHaveClass(/pcard-readonly/);
     }
   });
 
@@ -214,7 +253,8 @@ test.describe("procpane UI (server build)", () => {
     page,
   }) => {
     await page.goto("/");
-    await expect(page.getByRole("button", { name: "刷新" })).toBeVisible();
+    const panel = activeTabPanel(page);
+    await expect(panel.getByRole("button", { name: "刷新" })).toBeVisible();
 
     await page.evaluate(() => {
       Object.defineProperty(document, "hidden", {
@@ -224,8 +264,8 @@ test.describe("procpane UI (server build)", () => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
 
-    await page.getByRole("button", { name: "刷新" }).click();
-    await expect(page.getByText(/上次更新 \d{2}:\d{2}:\d{2}/)).toBeVisible({
+    await panel.getByRole("button", { name: "刷新" }).click();
+    await expect(panel.getByText(/上次更新 \d{2}:\d{2}:\d{2}/)).toBeVisible({
       timeout: 30_000,
     });
   });
@@ -235,8 +275,9 @@ test.describe("procpane UI (server build)", () => {
   }) => {
     await page.goto("/");
 
-    const cards = page.locator(".cards-scroll .pcard");
-    const empty = page.getByText("没有匹配的 LISTEN 端口");
+    const panel = activeTabPanel(page);
+    const cards = panel.locator(".cards-scroll .pcard");
+    const empty = panel.getByText(/当前没有 LISTEN 端口|没有匹配/);
     await expect(cards.first().or(empty)).toBeVisible({ timeout: 30_000 });
 
     const countBefore = await cards.count();
@@ -244,10 +285,10 @@ test.describe("procpane UI (server build)", () => {
       test.skip(true, "no listener cards in this environment");
     }
 
-    const footerTime = page.locator("footer.foot .live").getByText(/上次更新/);
+    const footerTime = panel.locator("footer.foot .live").getByText(/上次更新/);
     await expect(footerTime).toBeVisible({ timeout: 30_000 });
 
-    const refreshBtn = page.getByRole("button", { name: "刷新" });
+    const refreshBtn = panel.getByRole("button", { name: "刷新" });
     await refreshBtn.click();
 
     await expect(refreshBtn).toHaveClass(/spin/, { timeout: 5_000 });

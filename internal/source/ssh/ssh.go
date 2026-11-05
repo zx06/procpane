@@ -32,24 +32,24 @@ func (s *Source) ListListeners(ctx context.Context) ([]model.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
-	client, err := dial(ctx, entry)
+	client, err := acquireSSHClient(ctx, entry)
 	if err != nil {
 		return nil, err
 	}
 	raw, tool, err := collectRemote(ctx, client)
 	if err != nil {
-		client.Close()
-		client, dialErr := dial(ctx, entry)
+		dropSSHClient(entry.Alias)
+		client, dialErr := acquireSSHClient(ctx, entry)
 		if dialErr != nil {
 			return nil, err
 		}
 		raw, tool, err = collectRemote(ctx, client)
 		if err != nil {
-			client.Close()
+			dropSSHClient(entry.Alias)
 			return nil, err
 		}
 	}
-	defer client.Close()
+	touchSSHClient(entry.Alias)
 	listeners := rawToListeners(s.HostAlias, raw)
 	enrichRemote(ctx, client, tool, listeners)
 	return listeners, nil
@@ -142,7 +142,12 @@ type listenScanAttempt struct {
 
 func remoteListenAttempts() []listenScanAttempt {
 	return []listenScanAttempt{
-		{"ss", []string{"ss -H -ltnp 2>/dev/null", "ss -H -lunp 2>/dev/null"}},
+		{"ss", []string{
+			"sudo -n ss -H -ltnp 2>/dev/null",
+			"sudo -n ss -H -lunp 2>/dev/null",
+			"ss -H -ltnp 2>/dev/null",
+			"ss -H -lunp 2>/dev/null",
+		}},
 		{"lsof", []string{"lsof -nP -iTCP -sTCP:LISTEN 2>/dev/null", "lsof -nP -iUDP 2>/dev/null"}},
 		{"netstat", []string{"netstat -ltnp 2>/dev/null", "netstat -lunp 2>/dev/null"}},
 	}
@@ -249,6 +254,10 @@ func runRemote(ctx context.Context, client *gossh.Client, cmd string) (string, e
 	})
 }
 
+func runRemoteEnrich(ctx context.Context, client *gossh.Client, cmd string) (string, error) {
+	return runRemoteOnce(ctx, client, cmd)
+}
+
 func runRemoteOnce(ctx context.Context, client *gossh.Client, cmd string) (string, error) {
 	sess, err := client.NewSession()
 	if err != nil {
@@ -272,26 +281,3 @@ func runRemoteOnce(ctx context.Context, client *gossh.Client, cmd string) (strin
 	}
 }
 
-func enrichRemote(ctx context.Context, client *gossh.Client, tool string, listeners []model.Listener) {
-	for i := range listeners {
-		if listeners[i].PID <= 0 {
-			continue
-		}
-		cmd := fmt.Sprintf("ps -p %d -o comm= 2>/dev/null || true", listeners[i].PID)
-		out, err := runRemote(ctx, client, cmd)
-		if err != nil {
-			continue
-		}
-		name := strings.TrimSpace(out)
-		if name != "" {
-			listeners[i].Name = name
-		}
-		cmdlineCmd := fmt.Sprintf("tr '\\0' ' ' < /proc/%d/cmdline 2>/dev/null || ps -p %d -o args= 2>/dev/null", listeners[i].PID, listeners[i].PID)
-		if out, err := runRemote(ctx, client, cmdlineCmd); err == nil {
-			if c := strings.TrimSpace(out); c != "" {
-				listeners[i].Cmdline = c
-			}
-		}
-		_ = tool
-	}
-}
