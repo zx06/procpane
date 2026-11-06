@@ -21,6 +21,9 @@ const (
 	connGraphH   = 640
 )
 
+// m3GlassWindow configures native translucency (MacBackdropTranslucent, Windows Acrylic).
+// On macOS, WKWebView stays opaque unless the binary is built with -tags private_mac_apis;
+// see https://v3.wails.io/guides/build/private-macos-apis/
 func m3GlassWindow() application.WebviewWindowOptions {
 	return application.WebviewWindowOptions{
 		BackgroundType:   application.BackgroundTypeTranslucent,
