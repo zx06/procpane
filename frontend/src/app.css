@@ -138,12 +138,17 @@
     color: var(--color-fg);
   }
 
-  @media (prefers-reduced-transparency: no-preference) {
-    @supports (backdrop-filter: blur(1px)) {
-      .m3-surface {
-        background: var(--color-bg-glass);
-        backdrop-filter: blur(28px) saturate(1.35);
-      }
+  @supports (backdrop-filter: blur(1px)) {
+    .m3-surface {
+      background: var(--color-bg-glass);
+      backdrop-filter: blur(28px) saturate(1.35);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .m3-surface {
+      background: var(--color-bg-solid);
+      backdrop-filter: none;
     }
   }
 
@@ -153,12 +158,17 @@
     border-radius: var(--radius-card);
   }
 
-  @media (prefers-reduced-transparency: no-preference) {
-    @supports (backdrop-filter: blur(1px)) {
-      .m3-card {
-        background: var(--color-pop-glass);
-        backdrop-filter: blur(28px) saturate(1.35);
-      }
+  @supports (backdrop-filter: blur(1px)) {
+    .m3-card {
+      background: var(--color-pop-glass);
+      backdrop-filter: blur(28px) saturate(1.35);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .m3-card {
+      background: var(--color-pop-solid);
+      backdrop-filter: none;
     }
   }
 
@@ -168,12 +178,17 @@
     border-radius: var(--radius-control);
   }
 
-  @media (prefers-reduced-transparency: no-preference) {
-    @supports (backdrop-filter: blur(1px)) {
-      .m3-ctrl {
-        background: var(--color-ctrl-glass);
-        backdrop-filter: blur(20px) saturate(1.25);
-      }
+  @supports (backdrop-filter: blur(1px)) {
+    .m3-ctrl {
+      background: var(--color-ctrl-glass);
+      backdrop-filter: blur(20px) saturate(1.25);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .m3-ctrl {
+      background: var(--color-ctrl-solid);
+      backdrop-filter: none;
     }
   }
 
@@ -697,12 +712,17 @@
     border: 1px solid var(--color-hair2);
   }
 
-  @media (prefers-reduced-transparency: no-preference) {
-    @supports (backdrop-filter: blur(1px)) {
-      .sheet {
-        background: var(--color-pop-glass);
-        backdrop-filter: blur(28px) saturate(1.35);
-      }
+  @supports (backdrop-filter: blur(1px)) {
+    .sheet {
+      background: var(--color-pop-glass);
+      backdrop-filter: blur(28px) saturate(1.35);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .sheet {
+      background: var(--color-pop-solid);
+      backdrop-filter: none;
     }
   }
 
@@ -785,12 +805,17 @@
     background: var(--color-pop-solid);
   }
 
-  @media (prefers-reduced-transparency: no-preference) {
-    @supports (backdrop-filter: blur(1px)) {
-      .toast {
-        background: var(--color-pop-glass);
-        backdrop-filter: blur(28px) saturate(1.35);
-      }
+  @supports (backdrop-filter: blur(1px)) {
+    .toast {
+      background: var(--color-pop-glass);
+      backdrop-filter: blur(28px) saturate(1.35);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .toast {
+      background: var(--color-pop-solid);
+      backdrop-filter: none;
     }
   }
 

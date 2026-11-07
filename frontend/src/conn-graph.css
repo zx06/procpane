@@ -52,12 +52,17 @@
     background: var(--color-pop-solid);
   }
 
-  @media (prefers-reduced-transparency: no-preference) {
-    @supports (backdrop-filter: blur(1px)) {
-      .cg-toolbar {
-        background: var(--color-pop-glass);
-        backdrop-filter: blur(28px) saturate(1.35);
-      }
+  @supports (backdrop-filter: blur(1px)) {
+    .cg-toolbar {
+      background: var(--color-pop-glass);
+      backdrop-filter: blur(28px) saturate(1.35);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .cg-toolbar {
+      background: var(--color-pop-solid);
+      backdrop-filter: none;
     }
   }
 
@@ -111,11 +116,15 @@
     color: var(--color-fg);
   }
 
-  @media (prefers-reduced-transparency: no-preference) {
-    @supports (backdrop-filter: blur(1px)) {
-      .cg-group-select {
-        background: var(--color-ctrl-glass);
-      }
+  @supports (backdrop-filter: blur(1px)) {
+    .cg-group-select {
+      background: var(--color-ctrl-glass);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .cg-group-select {
+      background: var(--color-ctrl-solid);
     }
   }
 
@@ -142,11 +151,15 @@
     background: var(--color-ctrl-solid);
   }
 
-  @media (prefers-reduced-transparency: no-preference) {
-    @supports (backdrop-filter: blur(1px)) {
-      .cg-chip {
-        background: var(--color-ctrl-glass);
-      }
+  @supports (backdrop-filter: blur(1px)) {
+    .cg-chip {
+      background: var(--color-ctrl-glass);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .cg-chip {
+      background: var(--color-ctrl-solid);
     }
   }
 
@@ -280,12 +293,17 @@
     border-left: 1px solid var(--color-hair2);
   }
 
-  @media (prefers-reduced-transparency: no-preference) {
-    @supports (backdrop-filter: blur(1px)) {
-      .cg-side {
-        background: var(--color-pop-glass);
-        backdrop-filter: blur(24px) saturate(1.3);
-      }
+  @supports (backdrop-filter: blur(1px)) {
+    .cg-side {
+      background: var(--color-pop-glass);
+      backdrop-filter: blur(24px) saturate(1.3);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .cg-side {
+      background: var(--color-pop-solid);
+      backdrop-filter: none;
     }
   }
 
@@ -362,11 +380,15 @@
     background: var(--color-ctrl-solid);
   }
 
-  @media (prefers-reduced-transparency: no-preference) {
-    @supports (backdrop-filter: blur(1px)) {
-      .cg-conn-row {
-        background: var(--color-pop-glass);
-      }
+  @supports (backdrop-filter: blur(1px)) {
+    .cg-conn-row {
+      background: var(--color-pop-glass);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .cg-conn-row {
+      background: var(--color-ctrl-solid);
     }
   }
 
@@ -426,12 +448,17 @@
     background: var(--color-pop-solid);
   }
 
-  @media (prefers-reduced-transparency: no-preference) {
-    @supports (backdrop-filter: blur(1px)) {
-      .cg-table-wrap {
-        background: var(--color-pop-glass);
-        backdrop-filter: blur(24px) saturate(1.3);
-      }
+  @supports (backdrop-filter: blur(1px)) {
+    .cg-table-wrap {
+      background: var(--color-pop-glass);
+      backdrop-filter: blur(24px) saturate(1.3);
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .cg-table-wrap {
+      background: var(--color-pop-solid);
+      backdrop-filter: none;
     }
   }
 
