@@ -94,7 +94,16 @@ SSH uses OpenSSH config + key/agent auth (**no password**). Docker uses `DOCKER_
    - **Windows**: [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) runtime.
    - **Linux**: GTK4 + WebKitGTK 6 (Wails v3). Tray + popup tested manually; headless CI often cannot run the full app.
 
-4. Build:
+4. Build (after `./scripts/build-frontend.sh`):
+
+   **macOS** (translucent menu-bar panel — requires [private macOS APIs](https://v3.wails.io/guides/build/private-macos-apis/)):
+
+   ```bash
+   go build -tags private_mac_apis -o bin/procpane-app ./cmd/procpane-app
+   ./bin/procpane-app
+   ```
+
+   **Linux**:
 
    ```bash
    go build -o bin/procpane-app ./cmd/procpane-app
@@ -170,7 +179,7 @@ Maintainers tag semver releases on `main` (do not merge release PRs without revi
 | `procpane-windows-amd64-setup.exe` | NSIS GUI installer (unsigned); needs WebView2 runtime |
 | `procpane-app-windows-amd64.zip` | Portable tray GUI (`procpane-app.exe`); needs WebView2 |
 
-**Not shipped (v1 release stream):** Linux arm64 GUI, macOS Intel/universal builds, Windows arm64 GUI, Apple notarization, MSI. GUI builds use `go build ./cmd/procpane-app` after `./scripts/build-frontend.sh` on each target OS (Wails Wake/Taskfile is not wired in this repo yet).
+**Not shipped (v1 release stream):** Linux arm64 GUI, macOS Intel/universal builds, Windows arm64 GUI, Apple notarization, MSI. GUI builds use `./scripts/build-frontend.sh` then `go build ./cmd/procpane-app` on Linux/Windows; **macOS adds `-tags private_mac_apis`** for translucent windows (same as release CI). Wails Wake/Taskfile is not wired in this repo yet — see `wails.yaml` for darwin tags when using `wails3 build`.
 
 Packaging helpers live under `scripts/release/` (`package-macos-gui.sh`, `procpane-windows-amd64.nsi`). The macOS `.app` bundles `NSLocalNetworkUsageDescription` and adhoc signing with `com.zx06.procpane` so Sequoia+ can grant Local Network access for SSH/Docker on your LAN.
 

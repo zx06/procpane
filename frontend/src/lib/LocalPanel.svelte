@@ -250,7 +250,7 @@
   </header>
 
   <div class="tools">
-    <div class="search">
+    <div class="search m3-ctrl">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.4" />
         <path
@@ -262,7 +262,7 @@
       </svg>
       <input type="search" placeholder="端口 / 进程…" bind:value={query} />
     </div>
-    <div class="mini-seg">
+    <div class="mini-seg m3-ctrl">
       {#each ["all", "tcp", "udp"] as p}
         <button
           type="button"
@@ -307,7 +307,7 @@
           <!-- svelte-ignore a11y_click_events_have_key_events -->
           <!-- svelte-ignore a11y_no_static_element_interactions -->
           <div
-            class="pcard"
+            class="pcard m3-card"
             class:on={card.id === selectedId}
             onclick={() => toggleCard(card.id)}
           >

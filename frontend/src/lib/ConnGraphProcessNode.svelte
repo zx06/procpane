@@ -6,7 +6,7 @@
 </script>
 
 <div
-  class="pcard flow-proc-node"
+  class="pcard m3-card flow-proc-node"
   class:on={selected}
   class:dim={data.dimmed}
   class:has-local={data.hasLocal}
@@ -32,7 +32,7 @@
   }
 
   .flow-proc-node.has-local {
-    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--local) 35%, transparent);
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--color-local) 35%, transparent);
   }
 
   .flow-proc-inner {
@@ -51,9 +51,9 @@
   }
 
   .flow-proc-inner .pid {
-    font-family: var(--mono);
+    font-family: var(--font-mono);
     font-size: 9px;
-    color: var(--muted);
+    color: var(--color-muted);
     margin-top: 2px;
   }
 
@@ -62,7 +62,7 @@
     height: 6px !important;
     min-width: 6px !important;
     min-height: 6px !important;
-    background: var(--hair) !important;
-    border: 1px solid var(--muted) !important;
+    background: var(--color-hair2) !important;
+    border: 1px solid var(--color-muted) !important;
   }
 </style>

@@ -37,8 +37,10 @@ CGO_ENABLED=0 go build -o bin/procpane ./cmd/procpane
 cd frontend && npm ci && npm run build   # or ./scripts/build-frontend.sh
 
 # GUI (needs OS webview + cgo on Linux)
-go build -o bin/procpane-app ./cmd/procpane-app
-# Windows GUI only: -ldflags="-H windowsgui" (PE GUI subsystem, no CMD flash)
+# macOS: -tags private_mac_apis required for translucent WKWebView (MacBackdropTranslucent)
+go build -tags private_mac_apis -o bin/procpane-app ./cmd/procpane-app
+# Linux: go build -o bin/procpane-app ./cmd/procpane-app
+# Windows GUI only: go build -ldflags="-H windowsgui" -o bin/procpane-app ./cmd/procpane-app
 ```
 
 ## Taboos
