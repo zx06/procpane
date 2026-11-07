@@ -165,13 +165,13 @@
 
   .cg-chip.on {
     color: var(--color-pill-fg);
-    border-color: color-mix(in srgb, var(--color-fg) 25%, var(--color-hair2));
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-hair2));
     background: var(--color-pill-bg);
   }
 
   .cg-chip.local-filter.on {
     color: var(--color-pill-fg);
-    border-color: color-mix(in srgb, var(--color-fg) 25%, var(--color-hair2));
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-hair2));
     background: var(--color-pill-bg);
   }
 
@@ -397,8 +397,8 @@
   }
 
   .cg-conn-row.on {
-    background: var(--color-row-on);
-    border-color: color-mix(in srgb, var(--color-fg) 22%, var(--color-hair2));
+    background: color-mix(in srgb, var(--color-accent-soft) 65%, var(--color-row-on));
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-hair2));
   }
 
   .cg-conn-row .addrs {

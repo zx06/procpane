@@ -18,9 +18,15 @@
   --color-ctrl-solid: #e8e8e8;
   --color-inset: rgb(0 0 0 / 0.04);
 
-  --color-pill-bg: rgb(26 26 26 / 0.78);
-  --color-pill-fg: #ffffff;
-  --color-tcp: #1a1a1a;
+  /* Mac HIG system blue — chrome accent (P2) */
+  --color-accent: #007aff;
+  --color-accent-on: #ffffff;
+  --color-accent-soft: rgb(0 122 255 / 0.14);
+  --color-accent-ring: rgb(0 122 255 / 0.38);
+
+  --color-pill-bg: var(--color-accent);
+  --color-pill-fg: var(--color-accent-on);
+  --color-tcp: var(--color-accent);
   --color-udp: #555555;
 
   --color-hair: rgb(255 255 255 / 0.55);
@@ -59,9 +65,12 @@
     --color-ctrl-solid: #333333;
     --color-inset: rgb(0 0 0 / 0.28);
 
-    --color-pill-bg: rgb(245 245 247 / 0.88);
-    --color-pill-fg: #1a1a1a;
-    --color-tcp: #f5f5f7;
+    --color-accent-soft: rgb(0 122 255 / 0.22);
+    --color-accent-ring: rgb(0 122 255 / 0.45);
+
+    --color-pill-bg: var(--color-accent);
+    --color-pill-fg: var(--color-accent-on);
+    --color-tcp: var(--color-accent);
     --color-udp: #b0b0b5;
 
     --color-hair: rgb(255 255 255 / 0.18);
@@ -87,15 +96,15 @@
     --color-bg-glass: var(--color-bg-solid);
     --color-pop-glass: var(--color-pop-solid);
     --color-ctrl-glass: var(--color-ctrl-solid);
-    --color-pill-bg: #1a1a1a;
-    --color-pill-fg: #ffffff;
+    --color-pill-bg: var(--color-accent);
+    --color-pill-fg: var(--color-accent-on);
   }
 }
 
 @media (prefers-reduced-transparency: reduce) and (prefers-color-scheme: dark) {
   :root {
-    --color-pill-bg: #f2f2f2;
-    --color-pill-fg: #1a1a1a;
+    --color-pill-bg: var(--color-accent);
+    --color-pill-fg: var(--color-accent-on);
   }
 }
 
@@ -122,7 +131,7 @@
   .ctx-select:focus-visible,
   .mini-seg button:focus-visible,
   .source-tabs button:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--color-fg) 50%, transparent);
+    outline: 2px solid var(--color-accent-ring);
     outline-offset: 2px;
   }
 
@@ -383,8 +392,8 @@
   }
 
   .pcard.on {
-    border-color: color-mix(in srgb, var(--color-fg) 45%, var(--color-hair2));
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-fg) 12%, transparent);
+    border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-hair2));
+    box-shadow: 0 0 0 2px var(--color-accent-soft);
   }
 
   .pcard-top {
@@ -913,7 +922,7 @@
   }
 
   .host-chip.on {
-    border-color: color-mix(in srgb, var(--color-fg) 35%, var(--color-hair2));
+    border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-hair2));
     color: var(--color-pill-fg);
     background: var(--color-pill-bg);
   }
@@ -938,7 +947,18 @@
     margin-top: 10px;
     background: var(--color-pill-bg);
     color: var(--color-pill-fg);
-    border: 1px solid color-mix(in srgb, var(--color-fg) 20%, var(--color-hair2));
+    border: 1px solid color-mix(in srgb, var(--color-accent) 35%, var(--color-hair2));
+  }
+
+  .btn.primary:hover {
+    background: color-mix(in srgb, var(--color-accent) 92%, #000);
+    border-color: color-mix(in srgb, var(--color-accent) 50%, var(--color-hair2));
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .btn.primary:hover {
+      background: color-mix(in srgb, var(--color-accent) 88%, #fff);
+    }
   }
 
   html.settings-root,
