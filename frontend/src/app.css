@@ -40,6 +40,10 @@
   --color-danger-bg: rgb(158 74 74 / 0.12);
   --color-ok: #5a735a;
 
+  /* Footer live indicator — vivid on frosted glass (not tied to muted --color-ok) */
+  --color-live: #34c759;
+  --color-live-busy: #ff9500;
+
   --color-overlay: rgb(20 24 32 / 0.28);
   --color-row-hover: rgb(0 0 0 / 0.035);
   --color-row-on: rgb(26 26 26 / 0.08);
@@ -82,6 +86,9 @@
     --color-danger: #c97878;
     --color-danger-bg: rgb(201 120 120 / 0.16);
     --color-ok: #8aab88;
+
+    --color-live: #30d158;
+    --color-live-busy: #ff9f0a;
 
     --color-overlay: rgb(0 0 0 / 0.45);
     --color-row-hover: rgb(255 255 255 / 0.05);
@@ -678,14 +685,14 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--color-ok);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-ok) 22%, transparent);
+    background: var(--color-live);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-live) 22%, transparent);
     flex-shrink: 0;
   }
 
   .dot.busy {
-    background: var(--color-warn);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-warn) 22%, transparent);
+    background: var(--color-live-busy);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-live-busy) 22%, transparent);
   }
 
   .quit-btn {
