@@ -13,7 +13,7 @@ jobs:
         include:
           - os: ubuntu-latest
             gui_deps: apt
-          - os: macos-14
+          - os: macos-15
             gui_deps: none
           - os: windows-latest
             gui_deps: none
