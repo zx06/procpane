@@ -18,7 +18,9 @@ const PROC_NODE_H = 54;
 function resolvedStrokeLocal(): string {
   const fallback = "#7c3aed";
   if (typeof document === "undefined") return fallback;
-  const v = getComputedStyle(document.documentElement).getPropertyValue("--local").trim();
+  const v = getComputedStyle(document.documentElement)
+    .getPropertyValue("--color-local-edge")
+    .trim();
   return v || fallback;
 }
 

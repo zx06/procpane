@@ -41,4 +41,9 @@ jobs:
 
       - name: Build GUI binary (compile smoke)
         shell: bash
-        run: CGO_ENABLED=1 go build -o bin/procpane-app ./cmd/procpane-app
+        run: |
+          TAGS=()
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            TAGS=(-tags private_mac_apis)
+          fi
+          CGO_ENABLED=1 go build "${TAGS[@]}" -o bin/procpane-app ./cmd/procpane-app

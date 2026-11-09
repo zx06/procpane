@@ -7,3 +7,8 @@ project:
   version: 0.2.3
 build:
   tags: []
+# macOS-only: enables WKWebView transparency for MacBackdropTranslucent (see private-macos-apis guide).
+targets:
+  darwin:
+    tags:
+      - private_mac_apis

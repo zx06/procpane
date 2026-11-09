@@ -108,7 +108,7 @@ export function dirLabel(dir: DirUi): string {
 }
 
 export function dirCssVar(dir: DirUi): string {
-  if (dir === "local") return "var(--local)";
-  if (dir === "in") return "var(--in-edge)";
-  return "var(--out-edge)";
+  if (dir === "local") return "var(--color-local-edge)";
+  if (dir === "in") return "var(--color-in-edge)";
+  return "var(--color-out-edge)";
 }

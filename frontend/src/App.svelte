@@ -30,7 +30,7 @@
   });
 </script>
 
-<div class="app">
+<div class="app m3-surface">
   <nav class="source-tabs" aria-label="数据源">
     {#each [
       ["local", "本机"],
